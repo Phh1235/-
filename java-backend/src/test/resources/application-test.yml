@@ -18,7 +18,9 @@ app:
   jwt:
     secret: test-secret-key-for-unit-tests-must-be-long-enough
   rate-limit:
-    enabled: true
+    # 默认关闭：各测试类共享同一个内存计数器，登录接口 10 次/分钟会让用例互相干扰。
+    # 限流本身由 RateLimitApiTest 用独立配置 + 独立 H2 库单独验证。
+    enabled: false
     mode: memory
   agent:
     base-url: http://127.0.0.1:1
