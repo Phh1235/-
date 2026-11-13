@@ -1,0 +1,31 @@
+# ---------- Java ----------
+java-backend/target/
+.m2repo/
+*.class
+
+# ---------- Python ----------
+python-agent/.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# ---------- 环境与密钥 ----------
+.env
+.env.local
+*.pem
+*.key
+
+# ---------- 日志与运行产物 ----------
+logs/
+*.log
+run/*.pid
+eval/reports/*.json
+
+# ---------- IDE / OS ----------
+.idea/
+.vscode/
+*.iml
+Thumbs.db
+.DS_Store
