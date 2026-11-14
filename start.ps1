@@ -44,23 +44,32 @@ if (-not (Test-Port 3306)) {
 }
 Write-Host '[ok] JDK 与 MySQL 就绪' -ForegroundColor Green
 
-# 2. Python Agent（阶段③完成后生效；没装就跳过，Java 仍可启动）
+# 2. Python Agent：优先用 .venv，没有就用系统 Python（依赖需已安装）
 $pyExe = Join-Path $pyDir '.venv\Scripts\python.exe'
-if (Test-Path $pyExe) {
-    if (-not (Test-Port 8000)) {
+if (-not (Test-Path $pyExe)) {
+    $pyCmd = Get-Command python -ErrorAction SilentlyContinue
+    if ($pyCmd) { $pyExe = $pyCmd.Source }
+}
+if ($pyExe -and (Test-Path $pyExe)) {
+    & $pyExe -c "import fastapi, uvicorn, httpx, pydantic" 2>$null
+    $pyDepsOk = ($LASTEXITCODE -eq 0)
+    if (-not $pyDepsOk) {
+        Write-Warning "Python 依赖不完整，跳过 Agent。请执行：cd python-agent; python -m venv .venv; .\.venv\Scripts\pip install -r requirements.txt"
+    } elseif (Test-Port 8000) {
+        Write-Host '[ok] Python Agent 已在运行' -ForegroundColor Green
+    } else {
         Write-Host '[..] 启动 Python Agent :8000'
+        $env:PYTHONPATH = $pyDir
         Start-Process -FilePath $pyExe `
             -ArgumentList '-m', 'uvicorn', 'app.main:app', '--host', '127.0.0.1', '--port', '8000' `
             -WorkingDirectory $pyDir `
             -RedirectStandardOutput (Join-Path $logDir 'python.out.log') `
             -RedirectStandardError (Join-Path $logDir 'python.err.log') | Out-Null
-        if (Wait-Port 8000 30) { Write-Host '[ok] Python Agent 已启动' -ForegroundColor Green }
-        else { Write-Warning 'Python Agent 30 秒内未就绪，日志见 logs\python.err.log' }
-    } else {
-        Write-Host '[ok] Python Agent 已在运行' -ForegroundColor Green
+        if (Wait-Port 8000 40) { Write-Host '[ok] Python Agent 已启动' -ForegroundColor Green }
+        else { Write-Warning 'Python Agent 40 秒内未就绪，日志见 logs\python.err.log' }
     }
 } else {
-    Write-Warning '未找到 python-agent\.venv，跳过 Python 侧（当前提交仅含 Java 侧，任务会失败）'
+    Write-Warning '未找到 Python，跳过 Agent 侧（Java 仍可启动，但比价任务会失败）'
 }
 
 # 3. 构建 Java

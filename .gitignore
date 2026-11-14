@@ -5,6 +5,7 @@ java-backend/target/
 
 # ---------- Python ----------
 python-agent/.venv/
+python-agent/.pylibs/
 __pycache__/
 *.py[cod]
 .pytest_cache/
