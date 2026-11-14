@@ -19,6 +19,8 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.util.StringUtils;
 
 import java.time.LocalDateTime;
@@ -57,8 +59,25 @@ public class TaskService {
         taskMapper.insert(task);
 
         eventService.record(task.getId(), TaskStage.PARSE.name(), TaskStatus.QUEUED.name(), 0, "任务已创建，等待调度");
-        dispatcher.dispatch(task.getId());
+        dispatchAfterCommit(task.getId());
         return task;
+    }
+
+    /**
+     * 必须等事务提交后再异步下发：@Async 线程用的是另一个数据库连接，
+     * 在事务未提交时 selectById 读不到刚插入的任务，会静默 return（任务永远卡在 QUEUED）。
+     */
+    private void dispatchAfterCommit(Long taskId) {
+        if (TransactionSynchronizationManager.isSynchronizationActive()) {
+            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                @Override
+                public void afterCommit() {
+                    dispatcher.dispatch(taskId);
+                }
+            });
+        } else {
+            dispatcher.dispatch(taskId);
+        }
     }
 
     public PageResponse<AgentTask> page(String status, long page, long size) {
@@ -132,7 +151,7 @@ public class TaskService {
 
         eventService.record(id, TaskStage.PARSE.name(), TaskStatus.QUEUED.name(), 0,
                 "第 " + task.getAttempt() + " 次重试");
-        dispatcher.dispatch(id);
+        dispatchAfterCommit(id);
         return task;
     }
 

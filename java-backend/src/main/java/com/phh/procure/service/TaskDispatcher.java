@@ -1,7 +1,6 @@
 package com.phh.procure.service;
 
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
-import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.phh.procure.client.AgentClient;
 import com.phh.procure.config.AppProperties;
 import com.phh.procure.dto.AgentSubmitRequest;
@@ -42,7 +41,12 @@ public class TaskDispatcher {
     @Async("agentExecutor")
     public void dispatch(Long taskId) {
         AgentTask task = taskMapper.selectById(taskId);
-        if (task == null || !TaskStatus.QUEUED.name().equals(task.getStatus())) {
+        if (task == null) {
+            log.warn("下发时任务不存在（可能事务未提交或已被删除）taskId={}", taskId);
+            return;
+        }
+        if (!TaskStatus.QUEUED.name().equals(task.getStatus())) {
+            log.info("任务状态为 {}，跳过下发 taskId={}", task.getStatus(), taskId);
             return;
         }
         PurchaseRequirement requirement = requirementMapper.selectById(task.getRequirementId());
