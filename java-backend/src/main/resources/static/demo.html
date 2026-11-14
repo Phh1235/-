@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1"/>
+    <title>采购比价与供应商尽调 Agent</title>
+    <style>
+        :root { --line: #e5e7eb; --ink: #111827; --muted: #6b7280; --brand: #2563eb; --warn: #b45309; --bad: #b91c1c; }
+        * { box-sizing: border-box; }
+        body { margin: 0; font: 14px/1.6 -apple-system, "Segoe UI", "Microsoft YaHei", sans-serif; color: var(--ink); background: #f8fafc; }
+        header { padding: 14px 24px; background: #fff; border-bottom: 1px solid var(--line); display: flex; align-items: center; gap: 16px; }
+        header h1 { font-size: 16px; margin: 0; }
+        header .tag { font-size: 12px; color: var(--muted); border: 1px solid var(--line); border-radius: 999px; padding: 1px 8px; }
+        main { max-width: 1080px; margin: 20px auto 60px; padding: 0 16px; display: grid; gap: 16px; }
+        .card { background: #fff; border: 1px solid var(--line); border-radius: 10px; padding: 16px 18px; }
+        .card h2 { font-size: 14px; margin: 0 0 12px; color: var(--muted); font-weight: 600; letter-spacing: .02em; }
+        .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 10px; }
+        label { display: block; font-size: 12px; color: var(--muted); margin-bottom: 4px; }
+        input, select { width: 100%; padding: 7px 9px; border: 1px solid var(--line); border-radius: 7px; font: inherit; background: #fff; }
+        button { padding: 8px 14px; border: 1px solid var(--brand); background: var(--brand); color: #fff; border-radius: 7px; font: inherit; cursor: pointer; }
+        button.ghost { background: #fff; color: var(--brand); }
+        button:disabled { opacity: .5; cursor: not-allowed; }
+        .row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+        .muted { color: var(--muted); font-size: 12px; }
+        .bar { height: 8px; background: #eef2f7; border-radius: 999px; overflow: hidden; }
+        .bar > i { display: block; height: 100%; width: 0; background: var(--brand); transition: width .3s; }
+        table { width: 100%; border-collapse: collapse; font-size: 13px; }
+        th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--line); vertical-align: top; }
+        th { color: var(--muted); font-weight: 600; background: #fbfcfe; }
+        .badge { display: inline-block; font-size: 11px; padding: 1px 7px; border-radius: 999px; border: 1px solid; }
+        .badge.warn { color: var(--warn); border-color: #fcd34d; background: #fffbeb; }
+        .badge.ok { color: #047857; border-color: #a7f3d0; background: #ecfdf5; }
+        .badge.bad { color: var(--bad); border-color: #fecaca; background: #fef2f2; }
+        a { color: var(--brand); }
+        .hidden { display: none; }
+        #log { font-family: ui-monospace, Consolas, monospace; font-size: 12px; color: var(--muted); max-height: 120px; overflow: auto; }
+        footer { text-align: center; color: var(--muted); font-size: 12px; padding: 24px; }
+    </style>
+</head>
+<body>
+<header>
+    <h1>采购比价与供应商尽调 Agent</h1>
+    <span class="tag">Demo</span>
+    <span class="muted" id="who">未登录</span>
+</header>
+
+<main>
+    <section class="card" id="loginCard">
+        <h2>1. 登录</h2>
+        <div class="grid" style="max-width:420px">
+            <div><label>用户名</label><input id="username" value="demo"/></div>
+            <div><label>密码</label><input id="password" type="password" value="demo123"/></div>
+        </div>
+        <div class="row" style="margin-top:12px">
+            <button id="loginBtn">登录</button>
+            <span class="muted">默认账号 demo / demo123（Flyway 自动建表并写入演示数据）</span>
+        </div>
+    </section>
+
+    <section class="card hidden" id="formCard">
+        <h2>2. 采购需求</h2>
+        <div class="grid">
+            <div><label>标题</label><input id="title" value="A4 复印纸季度采购"/></div>
+            <div><label>品类</label>
+                <select id="category">
+                    <option>办公用品</option>
+                    <option>IT设备</option>
+                    <option>金属材料</option>
+                    <option>包装耗材</option>
+                    <option>劳保用品</option>
+                    <option>电子元器件</option>
+                </select>
+            </div>
+            <div><label>规格</label><input id="spec" value="70g，500 张/包"/></div>
+            <div><label>数量</label><input id="quantity" type="number" value="200"/></div>
+            <div><label>预算（CNY）</label><input id="budget" type="number" value="6000"/></div>
+            <div><label>交付城市</label><input id="city" value="苏州"/></div>
+        </div>
+        <div class="row" style="margin-top:12px">
+            <button id="submitBtn">提交比价</button>
+            <label class="row muted" style="margin:0"><input type="checkbox" id="mock" checked style="width:auto"/> mock 模式（不访问外网）</label>
+        </div>
+    </section>
+
+    <section class="card hidden" id="progressCard">
+        <h2>3. 任务进度</h2>
+        <div class="row" style="justify-content:space-between">
+            <div id="taskMeta" class="muted">-</div>
+            <div class="row">
+                <button class="ghost" id="cancelBtn">取消</button>
+            </div>
+        </div>
+        <div class="bar" style="margin:10px 0"><i id="progressBar"></i></div>
+        <div id="log"></div>
+    </section>
+
+    <section class="card hidden" id="resultCard">
+        <h2>4. 比价结果</h2>
+        <div id="recommend" class="muted" style="margin-bottom:10px"></div>
+        <div class="row" style="margin-bottom:10px">
+            <button class="ghost" id="reportBtn">下载 Markdown 报告</button>
+            <button class="ghost" id="csvBtn">导出 CSV</button>
+        </div>
+        <table>
+            <thead><tr>
+                <th>供应商</th><th>单价</th><th>起订量</th><th>交期</th><th>来源</th><th>可信度</th>
+            </tr></thead>
+            <tbody id="quoteBody"></tbody>
+        </table>
+        <h2 style="margin-top:18px">资质与风险</h2>
+        <table>
+            <thead><tr><th>供应商</th><th>类型</th><th>等级</th><th>说明</th><th>状态</th></tr></thead>
+            <tbody id="riskBody"></tbody>
+        </table>
+    </section>
+</main>
+<footer>数据均标注来源与抓取时间；无法核实的字段标“待人工核实”，大模型不参与报价计算。</footer>
+
+<script>
+    const state = { token: null, taskId: null, es: null };
+
+    const $ = (id) => document.getElementById(id);
+    const show = (id, visible) => $(id).classList.toggle('hidden', !visible);
+
+    async function api(path, options = {}) {
+        const headers = Object.assign({ 'Content-Type': 'application/json' }, options.headers || {});
+        if (state.token) headers.Authorization = 'Bearer ' + state.token;
+        const resp = await fetch(path, Object.assign({}, options, { headers }));
+        if (resp.status === 204) return null;
+        const text = await resp.text();
+        let json = null;
+        try { json = text ? JSON.parse(text) : null; } catch (e) { /* 非 JSON（如 markdown） */ }
+        if (!resp.ok) {
+            const msg = (json && (json.message || json.error)) || text || ('HTTP ' + resp.status);
+            throw new Error(msg);
+        }
+        return json ? json.data : text;
+    }
+
+    $('loginBtn').onclick = async () => {
+        try {
+            const data = await api('/api/auth/login', {
+                method: 'POST',
+                body: JSON.stringify({ username: $('username').value, password: $('password').value })
+            });
+            state.token = data.token;
+            $('who').textContent = data.displayName + '（' + data.role + '）';
+            show('loginCard', false);
+            show('formCard', true);
+        } catch (e) {
+            alert('登录失败：' + e.message);
+        }
+    };
+
+    $('submitBtn').onclick = async () => {
+        $('submitBtn').disabled = true;
+        try {
+            const requirement = await api('/api/requirements', {
+                method: 'POST',
+                body: JSON.stringify({
+                    title: $('title').value,
+                    category: $('category').value,
+                    spec: $('spec').value,
+                    quantity: Number($('quantity').value),
+                    unit: '件',
+                    budgetAmount: Number($('budget').value),
+                    currency: 'CNY',
+                    deliveryCity: $('city').value
+                })
+            });
+            const task = await api('/api/requirements/' + requirement.id + '/tasks?mockMode=' + $('mock').checked, { method: 'POST' });
+            state.taskId = task.id;
+            show('progressCard', true);
+            show('resultCard', false);
+            $('log').textContent = '';
+            $('progressBar').style.width = '0%';
+            $('taskMeta').textContent = '任务 #' + task.id + ' 已创建';
+            await openStream(task.id);
+        } catch (e) {
+            alert('提交失败：' + e.message);
+        } finally {
+            $('submitBtn').disabled = false;
+        }
+    };
+
+    async function openStream(taskId) {
+        const ticket = await api('/api/tasks/' + taskId + '/stream-ticket', { method: 'POST' });
+        if (state.es) state.es.close();
+        const es = new EventSource('/api/tasks/' + taskId + '/stream?ticket=' + encodeURIComponent(ticket.ticket));
+        state.es = es;
+        es.addEventListener('stage', (ev) => {
+            const d = JSON.parse(ev.data);
+            $('progressBar').style.width = (d.progress || 0) + '%';
+            $('taskMeta').textContent = '任务 #' + taskId + ' · ' + d.stage + ' · ' + d.status;
+            const line = document.createElement('div');
+            line.textContent = '[' + (d.at || '') + '] ' + d.stage + ' ' + (d.message || '');
+            $('log').appendChild(line);
+            $('log').scrollTop = $('log').scrollHeight;
+            if (d.status === 'SUCCEEDED') {
+                es.close();
+                loadResult(taskId);
+            } else if (d.status === 'FAILED' || d.status === 'CANCELED') {
+                es.close();
+                $('taskMeta').textContent += ' · ' + (d.message || d.status);
+            }
+        });
+        es.onerror = () => {
+            // 断线后靠 /events 回放补齐（这里简单重连一次）
+            es.close();
+            $('log').appendChild(Object.assign(document.createElement('div'), { textContent: '[!] SSE 连接中断' }));
+        };
+    }
+
+    async function loadResult(taskId) {
+        const view = await api('/api/tasks/' + taskId + '/result');
+        show('resultCard', true);
+        $('recommend').textContent = view.result
+            ? ('推荐：' + view.result.recommendedSupplier + ' — ' + view.result.recommendation)
+            : '暂无推荐结论（任务未完成）';
+
+        $('quoteBody').innerHTML = view.quotes.map(q => `
+            <tr>
+                <td>${escapeHtml(q.supplierName)}</td>
+                <td>${q.unitPrice} ${q.currency}/${q.unit || ''}</td>
+                <td>${q.moq ?? '-'}</td>
+                <td>${q.leadTimeDays ?? '-'} 天</td>
+                <td>${q.sourceUrl ? `<a href="${escapeHtml(q.sourceUrl)}" target="_blank" rel="noreferrer">来源</a><div class="muted">${q.fetchedAt || ''}</div>` : '<span class="badge bad">无来源</span>'}</td>
+                <td>${q.needsReview ? '<span class="badge warn">待人工核实</span>' : '<span class="badge ok">已核实</span>'}</td>
+            </tr>`).join('');
+
+        $('riskBody').innerHTML = view.risks.map(r => `
+            <tr>
+                <td>${escapeHtml(r.supplierName)}</td>
+                <td>${escapeHtml(r.type)}</td>
+                <td>${r.level === 'HIGH' ? '<span class="badge bad">高</span>' : escapeHtml(r.level)}</td>
+                <td>${escapeHtml(r.title)}<div class="muted">${escapeHtml(r.detail || '')}</div></td>
+                <td>${r.needsReview ? '<span class="badge warn">待人工核实</span>' : '<span class="badge ok">已核实</span>'}</td>
+            </tr>`).join('');
+
+        $('reportBtn').onclick = () => download('/api/tasks/' + taskId + '/report.md', 'report-' + taskId + '.md');
+        $('csvBtn').onclick = () => download('/api/tasks/' + taskId + '/export.csv', 'quotes-' + taskId + '.csv');
+    }
+
+    async function download(path, filename) {
+        const resp = await fetch(path, { headers: { Authorization: 'Bearer ' + state.token } });
+        if (!resp.ok) { alert('下载失败：HTTP ' + resp.status); return; }
+        const blob = await resp.blob();
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        a.click();
+        URL.revokeObjectURL(url);
+    }
+
+    $('cancelBtn').onclick = async () => {
+        if (!state.taskId) return;
+        try {
+            await api('/api/tasks/' + state.taskId + '/cancel', { method: 'POST' });
+        } catch (e) {
+            alert('取消失败：' + e.message);
+        }
+    };
+
+    function escapeHtml(s) {
+        return String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+    }
+</script>
+</body>
+</html>
