@@ -24,6 +24,19 @@ from app.security import mask_sensitive
 _SPLIT = re.compile(r"[\s,，。;；、/|（）()【】\[\]{}:：]+")
 
 
+def fmt_num(value: object) -> str:
+    """把 Decimal('200.0') 这类值显示成 200，避免报告里出现 200.0 件。"""
+    if value is None or value == "":
+        return "未填写"
+    try:
+        d = Decimal(str(value))
+    except (InvalidOperation, ValueError):
+        return str(value)
+    if d == d.to_integral_value():
+        return str(d.quantize(Decimal("1")))
+    return format(d.normalize(), "f")
+
+
 def parse_requirement(req: RequirementPayload) -> dict:
     """规则解析：品类、规格、单位、数量、预算单价、关键词。
 
@@ -379,7 +392,7 @@ def build_report(
     lines.append("## 一、需求摘要")
     lines.append("")
     lines.append(f"- 品类：{req.category}；规格：{req.spec or '未填写'}")
-    lines.append(f"- 数量：{req.quantity or '未填写'} {ctx['unit']}；预算：{req.budgetAmount or '未填写'} {req.currency or 'CNY'}")
+    lines.append(f"- 数量：{fmt_num(req.quantity)} {ctx['unit']}；预算：{fmt_num(req.budgetAmount)} {req.currency or 'CNY'}")
     if ctx.get("budget_unit_price"):
         lines.append(f"- 预算折算单价：{ctx['budget_unit_price']} 元/{ctx['unit']}（用于后续价格偏离判断）")
     lines.append(f"- 交付地：{req.deliveryCity or '未填写'}")
