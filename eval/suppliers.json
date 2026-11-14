@@ -1,0 +1,22 @@
+{
+  "suppliers": [
+    {"id": 1, "code": "SUP-001", "name": "华东办公用品有限公司", "category": "办公用品", "rating": 4.60, "blacklisted": 0},
+    {"id": 2, "code": "SUP-002", "name": "恒信文具有限公司", "category": "办公用品", "rating": 4.20, "blacklisted": 0},
+    {"id": 3, "code": "SUP-003", "name": "联创数码科技有限公司", "category": "IT设备", "rating": 4.80, "blacklisted": 0},
+    {"id": 4, "code": "SUP-004", "name": "北方计算设备有限公司", "category": "IT设备", "rating": 3.90, "blacklisted": 0},
+    {"id": 5, "code": "SUP-005", "name": "安泰劳保用品厂", "category": "劳保用品", "rating": 4.30, "blacklisted": 0},
+    {"id": 6, "code": "SUP-006", "name": "金盾防护装备有限公司", "category": "劳保用品", "rating": 4.10, "blacklisted": 0},
+    {"id": 7, "code": "SUP-007", "name": "精工五金制造有限公司", "category": "五金工具", "rating": 4.00, "blacklisted": 0},
+    {"id": 8, "code": "SUP-008", "name": "永固工具贸易有限公司", "category": "五金工具", "rating": 2.40, "blacklisted": 1},
+    {"id": 9, "code": "SUP-009", "name": "绿源包装材料有限公司", "category": "包装材料", "rating": 4.40, "blacklisted": 0},
+    {"id": 10, "code": "SUP-010", "name": "宏达化工原料有限公司", "category": "化工原料", "rating": 3.70, "blacklisted": 0},
+    {"id": 11, "code": "SUP-011", "name": "博文具业有限公司", "category": "办公用品", "rating": 4.70, "blacklisted": 0},
+    {"id": 12, "code": "SUP-012", "name": "启明文具有限公司", "category": "办公用品", "rating": 3.60, "blacklisted": 0},
+    {"id": 13, "code": "SUP-013", "name": "新元办公服务有限公司", "category": "办公用品", "rating": 4.50, "blacklisted": 0},
+    {"id": 14, "code": "SUP-014", "name": "远航贸易有限公司", "category": "办公用品", "rating": 2.90, "blacklisted": 1},
+    {"id": 15, "code": "SUP-015", "name": "云启信息技术有限公司", "category": "IT设备", "rating": 4.60, "blacklisted": 0},
+    {"id": 16, "code": "SUP-016", "name": "鼎新电子设备有限公司", "category": "IT设备", "rating": 3.80, "blacklisted": 0},
+    {"id": 17, "code": "SUP-017", "name": "泰和劳保科技有限公司", "category": "劳保用品", "rating": 4.40, "blacklisted": 0},
+    {"id": 18, "code": "SUP-018", "name": "永盛包装制品有限公司", "category": "包装材料", "rating": 4.20, "blacklisted": 0}
+  ]
+}

@@ -140,19 +140,25 @@ _MOCK_TEMPLATE = (
 class MockSource:
     """确定性的模拟报价：同一供应商 + 同一需求永远得到同一价格，便于测试断言。"""
 
-    def quote_page(self, supplier_id: int, name: str, category: str, spec: str, unit: str) -> str:
+    def ground_truth(self, supplier_id: int, category: str) -> dict:
+        """生成页面前就知道的"真值"，评测脚本用它做抽检对照。"""
         base = _CATEGORY_BASE_PRICE.get(category, 100.0)
         seed = int(hashlib.sha256(f"{supplier_id}:{category}".encode()).hexdigest()[:8], 16)
         drift = (seed % 23) - 11  # -11% .. +11%
-        price = round(base * (1 + drift / 100.0), 2)
-        moq = 20 + (seed % 180)
-        lead = 3 + (seed % 22)
+        return {
+            "unitPrice": round(base * (1 + drift / 100.0), 2),
+            "moq": 20 + (seed % 180),
+            "leadTimeDays": 3 + (seed % 22),
+        }
+
+    def quote_page(self, supplier_id: int, name: str, category: str, spec: str, unit: str) -> str:
+        truth = self.ground_truth(supplier_id, category)
         return _MOCK_TEMPLATE.format(
             name=name,
             category=category,
             spec=spec or "标准规格",
-            price=price,
+            price=truth["unitPrice"],
             unit=unit or "件",
-            moq=moq,
-            lead=lead,
+            moq=truth["moq"],
+            lead=truth["leadTimeDays"],
         )

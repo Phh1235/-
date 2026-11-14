@@ -99,6 +99,18 @@ async def test_price_outside_text_is_rejected():
     assert outcome.fields is None
 
 
+@pytest.mark.asyncio
+async def test_price_context_prefers_current_price_over_list_price():
+    """页面同时出现「原价 999」和「现价 28.50」时，必须取现价。"""
+    page = "原价 ¥999.00（划线价），现价 ¥28.50/件\n起订量：50 件\n交货周期：10 天"
+    ctx = parse_requirement(REQ)
+    outcome = await extract_quote(page, ctx, LLM, CandidateSupplier(id=4, name="某公司"))
+    assert outcome.method == "regex"
+    assert outcome.fields["unitPrice"] == Decimal("28.50")
+    assert outcome.fields["moq"] == Decimal("50")
+    assert outcome.fields["leadTimeDays"] == 10
+
+
 def test_scoring_is_deterministic_and_price_dominant():
     quotes = [_quote(1, "甲", "25.00"), _quote(2, "乙", "30.00"), _quote(3, "丙", "40.00")]
     ratings = {1: 4.0, 2: 4.8, 3: 3.0}

@@ -108,6 +108,40 @@ class ExtractOutcome:
     rejected_reason: str = ""
 
 
+# 上下文权重：页面里"原价/市场价"这类数字不能当成交价
+_PRICE_CONTEXT = (
+    ("含税单价", 3),
+    ("现价", 3),
+    ("单价", 2),
+    ("报价", 2),
+    ("价格", 1),
+    ("元/", 1),
+    ("原价", -4),
+    ("市场价", -4),
+    ("吊牌价", -4),
+    ("参考价", -2),
+)
+
+
+def _price_candidates(text: str) -> list[tuple[int, int, Decimal, int, int]]:
+    """返回 (上下文得分, 位置, 价格, start, end)，按得分降序、位置升序排列。"""
+    found: dict[tuple[int, Decimal], tuple[int, int, Decimal, int, int]] = {}
+    for pattern in _PRICE_PATTERNS:
+        for m in pattern.finditer(text):
+            value = _to_decimal(m.group(1))
+            if value is None:
+                continue
+            window = text[max(0, m.start() - 18) : m.end() + 8]
+            score = 0
+            for keyword, weight in _PRICE_CONTEXT:
+                if keyword in window:
+                    score += weight
+            key = (value, m.end())
+            if key not in found:
+                found[key] = (score, m.start(), value, m.start(), m.end())
+    return sorted(found.values(), key=lambda item: (-item[0], item[1]))
+
+
 async def extract_quote(
     page_text: str,
     ctx: dict,
@@ -116,14 +150,10 @@ async def extract_quote(
 ) -> ExtractOutcome:
     price: Decimal | None = None
     snippet = ""
-    for pattern in _PRICE_PATTERNS:
-        m = pattern.search(page_text)
-        if m:
-            price = _to_decimal(m.group(1))
-            if price is not None:
-                start = max(0, m.start() - 30)
-                snippet = page_text[start : m.end() + 60].replace("\n", " ").strip()
-                break
+    candidates = _price_candidates(page_text)
+    if candidates:
+        _score, _pos, price, start, end = candidates[0]
+        snippet = page_text[max(0, start - 30) : end + 60].replace("\n", " ").strip()
 
     moq_m = _MOQ_PATTERN.search(page_text)
     lead_m = _LEAD_PATTERN.search(page_text)
