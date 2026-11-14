@@ -1,20 +1,25 @@
 package com.phh.procure.service;
 
+import com.baomidou.mybatisplus.core.toolkit.Wrappers;
+import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.phh.procure.client.AgentClient;
 import com.phh.procure.config.AppProperties;
 import com.phh.procure.dto.AgentSubmitRequest;
 import com.phh.procure.entity.AgentTask;
 import com.phh.procure.entity.PurchaseRequirement;
+import com.phh.procure.entity.Supplier;
 import com.phh.procure.enums.TaskStage;
 import com.phh.procure.enums.TaskStatus;
 import com.phh.procure.mapper.AgentTaskMapper;
 import com.phh.procure.mapper.PurchaseRequirementMapper;
+import com.phh.procure.mapper.SupplierMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 /**
  * 异步下发器：把"调用 Python"从 HTTP 请求线程里摘出去。
@@ -29,6 +34,7 @@ public class TaskDispatcher {
 
     private final AgentTaskMapper taskMapper;
     private final PurchaseRequirementMapper requirementMapper;
+    private final SupplierMapper supplierMapper;
     private final AgentClient agentClient;
     private final AppProperties props;
     private final TaskEventService eventService;
@@ -60,23 +66,43 @@ public class TaskDispatcher {
                         requirement.getId(), requirement.getTitle(), requirement.getCategory(),
                         requirement.getSpec(), requirement.getQuantity(), requirement.getUnit(),
                         requirement.getBudgetAmount(), requirement.getCurrency(),
-                        requirement.getDeliveryCity(), requirement.getDeadline(), requirement.getDescription()));
+                        requirement.getDeliveryCity(), requirement.getDeadline(), requirement.getDescription()),
+                candidates(requirement.getCategory()));
 
         try {
             AgentClient.AgentSubmitResponse response =
                     agentClient.submit(props.getAgent().getInternalToken(), request);
-            AgentTask latest = taskMapper.selectById(taskId);
-            if (latest == null || TaskStatus.CANCELED.name().equals(latest.getStatus())) {
-                log.info("任务在下发返回前已被取消，忽略返回值 taskId={}", taskId);
-                return;
-            }
-            latest.setExternalTaskId(response == null ? null : response.taskId());
-            latest.setLastHeartbeatAt(LocalDateTime.now());
-            taskMapper.updateById(latest);
+            // 只做定点更新并排除 CANCELED：整实体回写会把用户在等待期间点下的"取消"覆盖掉
+            taskMapper.update(null, Wrappers.<AgentTask>lambdaUpdate()
+                    .eq(AgentTask::getId, taskId)
+                    .ne(AgentTask::getStatus, TaskStatus.CANCELED.name())
+                    .set(AgentTask::getExternalTaskId, response == null ? null : response.taskId())
+                    .set(AgentTask::getLastHeartbeatAt, LocalDateTime.now()));
         } catch (Exception e) {
             log.warn("下发 Agent 失败 taskId={}", taskId, e);
             fail(taskId, "调用 Python Agent 失败：" + rootMessage(e));
         }
+    }
+
+    /**
+     * 候选人名单由 Java 主数据决定：同品类优先，没有同品类就退回评分最高的 20 家。
+     * 黑名单供应商仍然下发（Python 负责标记风险），由打分公式扣分而不是直接隐藏——
+     * 否则"为什么这家没出现"无法解释。
+     */
+    private List<AgentSubmitRequest.CandidateSupplier> candidates(String category) {
+        List<Supplier> matched = supplierMapper.selectList(Wrappers.<Supplier>lambdaQuery()
+                .eq(category != null && !category.isBlank(), Supplier::getCategory, category)
+                .orderByDesc(Supplier::getRating));
+        if (matched.isEmpty()) {
+            matched = supplierMapper.selectList(Wrappers.<Supplier>lambdaQuery()
+                    .orderByDesc(Supplier::getRating)
+                    .last("LIMIT 20"));
+        }
+        return matched.stream()
+                .map(s -> new AgentSubmitRequest.CandidateSupplier(
+                        s.getId(), s.getCode(), s.getName(), s.getWebsite(),
+                        s.getCategory(), s.getRating(), Boolean.TRUE.equals(s.getBlacklisted())))
+                .toList();
     }
 
     public void fail(Long taskId, String message) {

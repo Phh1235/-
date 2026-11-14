@@ -2,16 +2,20 @@ package com.phh.procure.dto;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.util.List;
 
 /**
  * 下发给 Python Agent 的任务载荷。只传业务字段，不传任何密钥——
  * Python 侧的回调签名密钥通过环境变量注入，避免随请求扩散。
+ * <p>候选人一并下发：供应商主数据归 Java 管，Python 只按名单去公开页面取证，
+ * 这样"供应商 ID 由谁产生"不会两边各写一套。</p>
  */
 public record AgentSubmitRequest(
         Long taskId,
         boolean mockMode,
         String callbackUrl,
-        RequirementPayload requirement
+        RequirementPayload requirement,
+        List<CandidateSupplier> candidates
 ) {
 
     public record RequirementPayload(
@@ -26,6 +30,17 @@ public record AgentSubmitRequest(
             String deliveryCity,
             LocalDate deadline,
             String description
+    ) {
+    }
+
+    public record CandidateSupplier(
+            Long id,
+            String code,
+            String name,
+            String website,
+            String category,
+            BigDecimal rating,
+            boolean blacklisted
     ) {
     }
 }
