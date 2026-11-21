@@ -171,6 +171,7 @@ mvn spring-boot:run
 | GET | `/api/tasks/{id}/report.md` · `/export.csv` | 报告下载 / 表格导出（UTF-8 BOM） |
 | GET/POST/PUT/DELETE | `/api/suppliers` | 供应商主数据 |
 | POST | `/internal/agent/callback` | Python 回调（HMAC 验签，非公网暴露） |
+| POST | `/v1/inspect`（Python 内网） | 单页真实取证：抓取 + 抽取 + 来源/时间（详见第十四节） |
 
 ---
 
@@ -261,3 +262,74 @@ cd python-agent;  python -m pytest # 33 项：安全 / 流水线 / 回调签名
 - 真实抓取只支持静态 HTML，JS 渲染站点会抓不到价格（会被标记为"未抽取到可回查的报价"）。
 - 任务队列是数据库表 + 线程池，适合单机演示；上生产应换消息队列并做分布式锁。
 - 评测用的是 mock 真值，衡量的是"抽取链路有没有丢数/串数"，真实站点准确率需人工标注样本重跑。
+
+---
+
+## 十四、真实 AI 与联网取证（v1.1）
+
+### 1. 三种运行档位
+
+| 档位 | 开关 | 行为 | 用途 |
+| --- | --- | --- | --- |
+| MOCK | `AGENT_MOCK_MODE=true`（默认） | 不联网，`MockSource` 确定性造报价页 | 断网演示、单元测试、评测集 |
+| 真实抓取 | `AGENT_MOCK_MODE=false` + `FETCH_ALLOWED_DOMAINS` | 白名单内真实 URL 只读抓取 + 抽取 | 接真实供应商页面 |
+| 真实 AI | `LLM_ENABLED=true` | OpenAI 兼容端点参与「规格结构化 + 结论撰写」 | 语义理解、报告可读性 |
+
+三档可自由组合：真实抓取 + 规则引擎、MOCK + 真实 AI 都合法。
+
+### 2. 大模型接入（OpenAI 兼容，换供应商只改三行环境变量）
+
+默认指向免密钥网关（`https://text.pollinations.ai/openai`），clone 下来就能真的调通；
+免费额度约 **1 次请求 / 45 秒**，所以流水线刻意**一次任务只花一次模型调用**。
+
+换成自己的模型（DeepSeek / 通义 / Kimi / SiliconFlow / 本地 Ollama 都行）：
+
+```bash
+LLM_BASE_URL=https://api.deepseek.com
+LLM_MODEL=deepseek-chat
+LLM_API_KEY=sk-xxxx
+LLM_ALLOW_KEYLESS=false
+```
+
+**模型只做两件事，且都不碰钱**：
+
+1. `specAttributes`：把"70g, 500张/包"拆成 `{重量: 70g, 张数: 500张/包}`，只写进报告第一节做归一化展示；
+2. `recommendation`：复述已算好的事实写 2-3 句结论 —— 返回后必须过 `narrative_guard`，
+   正文里任何一个数字在事实表里找不到，整段丢弃，回退确定性文案。
+
+失败即降级：网络/鉴权/限流/JSON 不合法 → 熔断（默认 300s，网关给了 `Retry after Ns` 就按它的），
+整条链路继续走规则引擎，任务不会因此失败。报告第六节会写明本次是否用了模型、用的哪个。
+
+### 3. 单页真实取证：`POST /v1/inspect`
+
+给一个白名单内的真实 URL，真抓、真清洗、真抽取，返回字段 + 来源 + 抓取时间 + 置信度；
+抓不到价格就 `ok=false` 并给出原因，**不编造**。
+
+```bash
+curl -X POST http://127.0.0.1:8000/v1/inspect \
+  -H "X-Internal-Token: internal-token-demo" -H "Content-Type: application/json" \
+  -d '{"url":"https://example.com/","category":"办公用品","spec":"70g","unit":"包"}'
+```
+
+返回里 `fields.unitPrice` / `fields.moq` / `fields.leadTimeDays` 都带 `priceSnippet` 原文片段，
+`method` 标明这次是 `regex` 还是 `llm` 抽到的。
+
+### 4. 为什么不做"全网搜报价"（诚实边界）
+
+实测过、也确实被挡住的路：
+
+- 百度 / 搜狗 / Bing 的 HTML 结果页：无 Cookie 时返回验证页或降级结果，语义匹配极差（"复印纸"→"复印"教程）；
+- 京东 / 淘宝 / 1688：价格由 JS 异步加载或需登录，服务端 HTML 里没有价格；
+- 直接猜商品页 URL：能 200，但正文没有价格字段。
+
+所以本项目**不宣称"能爬全网报价"**，而是把真实联网能力收敛成两件可控的事：
+白名单 URL 直抓（`SafeFetcher`）与单页取证（`/v1/inspect`）。
+要扩大覆盖，正确做法是加"数据源适配器"（每个站点一个解析器 + 各自的限频），
+而不是让大模型去"猜"价格 —— 后者正是本项目的三道闸要防的事。
+
+### 5. 安全注意
+
+- `.env.example` 里不放任何真实 Key；`.env` 已被 `.gitignore`；
+- 曾经误提交过一个 Key 到公开仓库（当时笔误写进了模板），已从模板移除，且该 Key 已失效；
+  如果你要复用同类 Key，请先去控制台作废并重新签发；
+- 生产环境应把 `/v1/inspect` 也放到内网，或在网关层再加一层鉴权与配额。

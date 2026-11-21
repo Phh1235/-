@@ -101,6 +101,11 @@ class TaskManager:
 
     # ------------------------------------------------------------ 对外接口
 
+    @property
+    def fetcher(self) -> SafeFetcher:
+        """给 /v1/inspect 这类"单页取证"接口复用同一套抓取器（同样的白名单/限频/只读）。"""
+        return self._fetcher
+
     async def submit(self, req: AgentSubmitRequest) -> TaskRecord:
         record = TaskRecord(external_id=uuid4().hex, task_id=req.taskId)
         self._tasks[record.external_id] = record
@@ -137,6 +142,7 @@ class TaskManager:
         try:
             await self._stage(record, "PARSE", "解析采购需求")
             quote_ctx = parse_requirement(req.requirement)
+            spec_attrs: dict | None = None
 
             await self._stage(record, "DISCOVER", "确认候选供应商名单")
             candidates = req.candidates[:20]
@@ -157,8 +163,50 @@ class TaskManager:
 
             await self._stage(record, "SCORE", "按价格/交期/资质/风险加权打分")
             await self._stage(record, "RISK", f"识别 {len(risks)} 条风险项")
+
+            # REPORT 阶段才让大模型出场：它只复述事实、写一段结论，不参与任何算钱。
+            # 一次任务只花一次模型调用（规格归一化 + 结论合并在同一次），避免低配额网关被自己打满。
+            ordered = sorted(scored, key=lambda s: s.total, reverse=True)
+            narrative = None
+            if self._llm.active and ordered:
+                best = ordered[0]
+                facts = {
+                    "recommended": best.quote.supplierName,
+                    "unitPrice": float(best.quote.unitPrice),
+                    "unit": best.quote.unit,
+                    "leadTimeDays": best.quote.leadTimeDays,
+                    "totalScore": round(best.total, 2),
+                    "candidateCount": len(ordered),
+                    "highRisks": [r.title for r in risks if r.level == "HIGH"][:3],
+                    "top3": [
+                        {
+                            "supplierName": s.quote.supplierName,
+                            "unitPrice": float(s.quote.unitPrice),
+                            "score": round(s.total, 2),
+                        }
+                        for s in ordered[:3]
+                    ],
+                }
+                outcome = await self._llm.analyze_and_recommend(
+                    req.requirement.category, req.requirement.title,
+                    req.requirement.spec or "", facts,
+                )
+                if outcome:
+                    spec_attrs = outcome.get("specAttributes") or None
+                    narrative = outcome.get("recommendation")
+
+            engine = {
+                "llmUsed": self._llm.used,
+                "llmModel": self._llm.model_label if self._llm.used else None,
+                "llmStages": "规格结构化 + 推荐结论撰写" if (spec_attrs and narrative) else (
+                    "推荐结论撰写" if narrative else ("规格结构化" if spec_attrs else "")
+                ),
+                "llmCalls": self._llm.calls,
+                "llmError": self._llm.last_error,
+            }
             report_md, summary_json, recommended, recommendation = build_report(
-                req.requirement, quote_ctx, scored, risks, mock_mode
+                req.requirement, quote_ctx, scored, risks, mock_mode,
+                narrative=narrative, spec_attributes=spec_attrs, engine=engine,
             )
             await self._stage(record, "REPORT", "生成比价报告")
 

@@ -16,9 +16,11 @@ from fastapi.responses import JSONResponse
 
 from app.config import get_settings
 from app.llm import LlmClient
-from app.schemas import AgentSubmitRequest
-from app.security import DomainLimiter, UrlGuard
+from app.pipeline import extract_quote
+from app.schemas import AgentSubmitRequest, InspectRequest, jsonable
+from app.security import DomainLimiter, SecurityError, UrlGuard, sanitize_untrusted
 from app.tasks import TaskManager
+from app.tools import html_to_text
 
 logging.basicConfig(
     level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s - %(message)s"
@@ -76,6 +78,10 @@ async def health() -> dict:
         "status": "UP",
         "mockMode": settings.mock_mode,
         "llmActive": llm.active,
+        "llmModel": settings.llm_model,
+        "llmBaseUrl": settings.llm_base_url,
+        "llmKeyless": settings.llm_allow_keyless and not settings.llm_api_key,
+        "llmCalls": llm.calls,
         "llmLastError": llm.last_error,
         "allowedDomains": list(settings.allowed_domains),
         "maxPages": settings.max_pages,
@@ -106,6 +112,47 @@ async def cancel_task(external_id: str) -> dict:
     if not ok:
         raise HTTPException(status_code=404, detail="task not found")
     return {"taskId": external_id, "status": "CANCELED"}
+
+
+@app.post("/v1/inspect", dependencies=[Depends(require_internal_token)])
+async def inspect(req: InspectRequest) -> dict:
+    """单页真实取证：给一个白名单内的 URL，真抓、真清洗、真抽取，返回字段与来源。
+
+    只读、不落库、不留缓存；抓不到价格就如实返回 ok=false，绝不编造。
+    """
+    manager: TaskManager = app.state.manager
+    llm: LlmClient = app.state.llm
+    result = await manager.fetcher.fetch(req.url)
+    if not result.ok:
+        return {
+            "ok": False,
+            "url": req.url,
+            "fetchedAt": None,
+            "method": "none",
+            "reason": result.note or "抓取失败",
+            "fields": None,
+        }
+
+    text = html_to_text(result.text)
+    clean = sanitize_untrusted(text)
+    ctx = {
+        "category": req.category or "未填写",
+        "spec": req.spec or "",
+        "unit": req.unit or "件",
+    }
+    outcome = await extract_quote(clean.text, ctx, llm, None)
+    return {
+        "ok": outcome.fields is not None,
+        "url": req.url,
+        "fetchedAt": jsonable(result.fetched_at),
+        "method": outcome.method,
+        "reason": outcome.rejected_reason,
+        "fields": jsonable(outcome.fields) if outcome.fields else None,
+        "textLength": len(text),
+        "suspiciousFlags": clean.flags,
+        "llmUsed": llm.used,
+        "llmError": llm.last_error,
+    }
 
 
 @app.exception_handler(Exception)

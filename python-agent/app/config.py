@@ -72,10 +72,19 @@ class Settings:
     llm_base_url: str
     llm_model: str
     llm_timeout: float
+    llm_allow_keyless: bool
+    llm_cooldown: float
 
     @property
     def llm_active(self) -> bool:
-        return self.llm_enabled and bool(self.llm_api_key)
+        """是否需要"真的去调模型"。
+
+        只要 LLM_ENABLED 打开，且（配了 key 或允许免密钥网关）就算激活；
+        真正的可用性由调用失败后的熔断器决定，见 LlmClient。
+        """
+        if not self.llm_enabled:
+            return False
+        return bool(self.llm_api_key) or self.llm_allow_keyless
 
 
 @lru_cache(maxsize=1)
@@ -105,7 +114,11 @@ def get_settings() -> Settings:
         max_pages=_int("FETCH_MAX_PAGES", 20),
         llm_enabled=_bool("LLM_ENABLED", True),
         llm_api_key=os.environ.get("LLM_API_KEY", "").strip(),
-        llm_base_url=os.environ.get("LLM_BASE_URL", "https://api.deepseek.com").rstrip("/"),
-        llm_model=os.environ.get("LLM_MODEL", "deepseek-chat"),
-        llm_timeout=_float("LLM_TIMEOUT_SECONDS", 20.0),
+        # 默认指向免密钥的 OpenAI 兼容网关，保证 clone 下来就能真的调通模型；
+        # 想换成 DeepSeek / Kimi / 通义 / SiliconFlow，改这三个环境变量即可（它们都是 OpenAI 兼容协议）。
+        llm_base_url=os.environ.get("LLM_BASE_URL", "https://text.pollinations.ai/openai").rstrip("/"),
+        llm_model=os.environ.get("LLM_MODEL", "openai"),
+        llm_timeout=_float("LLM_TIMEOUT_SECONDS", 40.0),
+        llm_allow_keyless=_bool("LLM_ALLOW_KEYLESS", True),
+        llm_cooldown=_float("LLM_COOLDOWN_SECONDS", 300.0),
     )

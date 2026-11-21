@@ -97,6 +97,15 @@ class CallbackEvent(BaseModel):
     payload: CallbackPayload | None = None
 
 
+class InspectRequest(BaseModel):
+    """给"贴一个真实 URL 试试"用的单页取证请求（只读、白名单、不留存）。"""
+
+    url: str
+    category: str | None = None
+    spec: str | None = None
+    unit: str | None = None
+
+
 def jsonable(value: Any) -> Any:
     """把 Decimal/date/datetime 转成 Java Jackson 能直接吃的形态。
 
@@ -109,6 +118,8 @@ def jsonable(value: Any) -> Any:
         return value.strftime("%Y-%m-%dT%H:%M:%S")
     if isinstance(value, date):
         return value.isoformat()
+    if isinstance(value, BaseModel):
+        return {k: jsonable(v) for k, v in value.model_dump(exclude_none=True).items()}
     if isinstance(value, dict):
         return {k: jsonable(v) for k, v in value.items()}
     if isinstance(value, (list, tuple)):

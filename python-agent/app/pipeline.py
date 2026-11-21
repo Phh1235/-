@@ -389,6 +389,8 @@ def build_report(
     risks: list[RiskItem],
     mock_mode: bool,
     narrative: str | None = None,
+    spec_attributes: dict | None = None,
+    engine: dict | None = None,
 ) -> tuple[str, str, str, str]:
     """返回 (report_md, summary_json, recommended_supplier, recommendation)。"""
     ordered = sorted(scored, key=lambda s: s.total, reverse=True)
@@ -408,7 +410,11 @@ def build_report(
         recommendation = "没有拿到任何可回查的报价，无法给出推荐结论，请补充数据源后重试。"
 
     if narrative:
-        guarded = narrative_guard(narrative, {"quotes": [jsonable(s.quote) for s in ordered], "recommended": recommended})
+        guard_facts = {
+            "quotes": [{**jsonable(s.quote), "score": round(s.total, 2)} for s in ordered],
+            "recommended": recommended,
+        }
+        guarded = narrative_guard(narrative, guard_facts)
         if guarded:
             recommendation = guarded
 
@@ -426,6 +432,9 @@ def build_report(
     if ctx.get("budget_unit_price"):
         lines.append(f"- 预算折算单价：{ctx['budget_unit_price']} 元/{ctx['unit']}（用于后续价格偏离判断）")
     lines.append(f"- 交付地：{req.deliveryCity or '未填写'}")
+    if spec_attributes:
+        pairs = "；".join(f"{k}={v}" for k, v in list(spec_attributes.items())[:8])
+        lines.append(f"- 规格结构化（大模型解析，仅作归一化，不参与打分）：{pairs}")
     lines.append("")
     lines.append("## 二、比价表")
     lines.append("")
@@ -467,6 +476,13 @@ def build_report(
     lines.append("- 总分为确定性加权公式（价格 40 / 交期 20 / 资质 20 / 风险 20），同一输入结果可复现。")
     if mock_mode:
         lines.append("- 本报告使用 MOCK 数据，价格与交期均为模拟值，禁止用于真实采购。")
+    if engine and engine.get("llmUsed"):
+        lines.append(
+            f"- 大模型参与：{engine.get('llmStages') or '推荐结论撰写'}（模型 {engine.get('llmModel')}）；"
+            "报价抽取与打分仍由正则/规则与确定性公式完成，模型不参与算钱。"
+        )
+    else:
+        lines.append("- 本次未使用大模型（未配置或调用失败已熔断），全部字段由规则引擎产生。")
     lines.append("- 未覆盖：账期、付款方式、售后条款、实地验厂——这些必须线下确认。")
     lines.append("")
 
@@ -492,5 +508,7 @@ def build_report(
         "riskCounts": {
             level: sum(1 for r in risks if r.level == level) for level in ("HIGH", "MEDIUM", "LOW")
         },
+        "specAttributes": spec_attributes or {},
+        "engine": engine or {},
     }
     return "\n".join(lines), json.dumps(summary, ensure_ascii=False), recommended, recommendation
