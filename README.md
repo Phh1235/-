@@ -113,6 +113,15 @@ procure-agent/
 >
 > 若文件是从压缩包/网盘拷来的，再补一条 `Unblock-File .\start.ps1`（去掉"来自 Internet"标记）。
 
+> **需要重新构建 Java 时**：Windows 不允许重命名被运行中 JVM 占用的 `target\*.jar`，
+> 直接重建会报 `Unable to rename ... .jar.original`。脚本已做保护——检测到 8080 已在监听就自动跳过构建
+> 并提示"如需重新构建请先停止后端进程"。要先停后端再重建：
+>
+> ```powershell
+> Get-Process java -ErrorAction SilentlyContinue | Stop-Process -Force
+> .\start.bat
+> ```
+
 打开 <http://localhost:8080/demo.html>，账号 `demo / demo123`，默认勾选 MOCK 模式。
 API 文档：<http://localhost:8080/swagger-ui.html>。
 

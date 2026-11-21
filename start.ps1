@@ -73,8 +73,23 @@ if ($pyExe -and (Test-Path $pyExe)) {
 }
 
 # 3. 构建 Java
+# 注意：jar 正被运行中的 JVM 占用时，Windows 不允许重命名，spring-boot:repackage 会报
+#   "Unable to rename ...jar to ...jar.original"
+# 所以检测到 8080 已在监听时直接跳过构建，避免"先构建再失败"的假故障。
 $jar = Join-Path $javaDir 'target\procure-agent-java-1.0.0.jar'
-if (-not $SkipBuild -or -not (Test-Path $jar)) {
+$javaRunning = Test-Port 8080
+$needBuild = (-not (Test-Path $jar))
+
+if (-not $needBuild -and -not $SkipBuild) {
+    if ($javaRunning) {
+        Write-Warning '检测到 8080 已在运行：跳过构建，避免 jar 被占用导致 repackage 失败'
+        Write-Warning '如需重新构建，请先停止后端进程（任务管理器结束 java，或执行：Get-Process java -ErrorAction SilentlyContinue | Stop-Process -Force）'
+    } else {
+        $needBuild = $true
+    }
+}
+
+if ($needBuild) {
     if (-not (Get-Command mvn -ErrorAction SilentlyContinue)) {
         throw '未找到 mvn，请安装 Maven 3.9+，或用 -SkipBuild 直接使用已构建的 jar'
     }
@@ -82,7 +97,9 @@ if (-not $SkipBuild -or -not (Test-Path $jar)) {
     Push-Location $javaDir
     try {
         & mvn -B -q -DskipTests package
-        if ($LASTEXITCODE -ne 0) { throw 'Maven 构建失败' }
+        if ($LASTEXITCODE -ne 0) {
+            throw 'Maven 构建失败：若错误含 "Unable to rename ...jar.original"，说明 jar 正被运行中的 Java 进程占用，请先停止 8080 上的进程再重试'
+        }
     } finally {
         Pop-Location
     }
