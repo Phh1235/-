@@ -32,6 +32,10 @@ spring:
   mvc:
     async:
       request-timeout: 1800000
+  servlet:
+    multipart:
+      max-file-size: 5MB
+      max-request-size: 6MB
 
 mybatis-plus:
   configuration:

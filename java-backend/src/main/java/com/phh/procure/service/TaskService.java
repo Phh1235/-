@@ -10,6 +10,7 @@ import com.phh.procure.dto.PageResponse;
 import com.phh.procure.entity.AgentTask;
 import com.phh.procure.entity.PurchaseRequirement;
 import com.phh.procure.entity.TaskStageEvent;
+import com.phh.procure.enums.QuoteSource;
 import com.phh.procure.enums.TaskStage;
 import com.phh.procure.enums.TaskStatus;
 import com.phh.procure.mapper.AgentTaskMapper;
@@ -39,7 +40,7 @@ public class TaskService {
     private final AppProperties props;
 
     @Transactional
-    public AgentTask create(Long requirementId, Boolean mockMode) {
+    public AgentTask create(Long requirementId, Boolean mockMode, String quoteSource) {
         PurchaseRequirement requirement = requirementService.get(requirementId);
         Long active = taskMapper.selectCount(Wrappers.<AgentTask>lambdaQuery()
                 .eq(AgentTask::getRequirementId, requirementId)
@@ -48,17 +49,28 @@ public class TaskService {
             throw BizException.conflict("该需求单已有进行中的比价任务，请等待完成或先取消");
         }
 
+        QuoteSource source;
+        try {
+            source = QuoteSource.normalize(quoteSource);
+        } catch (IllegalArgumentException e) {
+            throw BizException.badRequest(e.getMessage());
+        }
+
         AgentTask task = new AgentTask();
         task.setRequirementId(requirement.getId());
         task.setStatus(TaskStatus.QUEUED.name());
         task.setStage(TaskStage.PARSE.name());
         task.setProgress(0);
         task.setAttempt(1);
-        task.setMockMode(mockMode != null ? mockMode : props.getAgent().isMockMode());
+        task.setMockMode(source == QuoteSource.IMPORT
+                ? Boolean.FALSE
+                : (mockMode != null ? mockMode : props.getAgent().isMockMode()));
+        task.setQuoteSource(source.name());
         task.setCreatedBy(SecurityUtils.currentUserId());
         taskMapper.insert(task);
 
-        eventService.record(task.getId(), TaskStage.PARSE.name(), TaskStatus.QUEUED.name(), 0, "任务已创建，等待调度");
+        eventService.record(task.getId(), TaskStage.PARSE.name(), TaskStatus.QUEUED.name(), 0,
+                "任务已创建，等待调度（报价来源：" + source.name() + "）");
         dispatchAfterCommit(task.getId());
         return task;
     }

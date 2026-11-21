@@ -24,6 +24,8 @@ public class AgentTask {
     private Integer progress;
     private Integer attempt;
     private Boolean mockMode;
+    /** MOCK / IMPORT / FETCH —— 报价来源，决定 Agent 走模拟、导入报价单还是抓取页面 */
+    private String quoteSource;
     private String externalTaskId;
     private String errorMessage;
     private String requestPayload;

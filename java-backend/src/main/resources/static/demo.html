@@ -388,6 +388,68 @@ a.src:hover{color:var(--accent); border-bottom-color:var(--accent)}
 @media (prefers-reduced-motion:reduce){
   *{animation-duration:.001ms!important; transition-duration:.001ms!important}
 }
+/* ================= v1.2 报价单导入 + 动效 ================= */
+.tabs{display:flex; gap:3px; margin-left:8px; padding:3px; border:1px solid var(--line); border-radius:11px; background:#0a0e14}
+.tab{appearance:none; border:0; background:transparent; color:var(--muted); font:inherit; font-size:12px; padding:5px 13px; border-radius:8px; cursor:pointer; transition:all .18s; white-space:nowrap}
+.tab:hover{color:var(--ink-2); background:#121821}
+.tab.on{color:#04141a; background:linear-gradient(145deg,#7deefb,#22d3ee); box-shadow:0 6px 18px -8px rgba(34,211,238,.9); font-weight:560}
+.tab .live{display:inline-block; width:5px;height:5px;border-radius:50%; background:var(--ok); margin-left:6px; vertical-align:middle; box-shadow:0 0 0 3px rgba(52,211,153,.14)}
+
+.panel{transition:border-color .25s ease, box-shadow .25s ease}
+.panel:hover{border-color:rgba(34,211,238,.14)}
+.panel.fade{animation:rise .42s cubic-bezier(.2,.7,.2,1) both}
+@keyframes rise{from{opacity:0; transform:translateY(9px)} to{opacity:1; transform:none}}
+.btn-primary{position:relative; overflow:hidden}
+.btn-primary::after{content:""; position:absolute; inset:0; pointer-events:none; background:linear-gradient(112deg,transparent 32%,rgba(255,255,255,.38) 50%,transparent 68%); transform:translateX(-130%); transition:transform .65s ease}
+.btn-primary:hover::after{transform:translateX(130%)}
+
+/* 数据源卡片 */
+.source-cards{display:grid; grid-template-columns:repeat(auto-fit,minmax(238px,1fr)); gap:10px; width:100%}
+.source-card{position:relative; display:flex; gap:11px; align-items:flex-start; padding:11px 13px; border:1px solid var(--line); border-radius:12px; background:#0a0e14; cursor:pointer; transition:transform .18s ease, border-color .18s ease, background .18s ease}
+.source-card:hover{transform:translateY(-1px); border-color:rgba(34,211,238,.32)}
+.source-card.on{border-color:rgba(34,211,238,.55); background:linear-gradient(180deg,rgba(34,211,238,.11),rgba(34,211,238,.02)); box-shadow:0 0 0 3px rgba(34,211,238,.07)}
+.source-card .ic{width:26px;height:26px;border-radius:8px;display:grid;place-items:center;flex:none;background:rgba(34,211,238,.08); border:1px solid rgba(34,211,238,.18); color:var(--accent)}
+.source-card .ic svg{width:14px;height:14px}
+.source-card .t{font-size:12.5px; color:var(--ink); font-weight:520}
+.source-card .d{font-size:11px; color:var(--muted-2); margin-top:2px; line-height:1.55}
+.source-card .radio{position:absolute; right:11px; top:11px; width:13px;height:13px;border-radius:50%; border:1px solid var(--line); background:#0a0e14; transition:all .18s}
+.source-card.on .radio{border-color:var(--accent); background:var(--accent); box-shadow:inset 0 0 0 3px #0a0e14}
+
+/* 拖拽上传 */
+.dropzone{position:relative; border:1.5px dashed rgba(34,211,238,.26); border-radius:14px; padding:26px 20px; text-align:center; cursor:pointer;
+  background:radial-gradient(560px 190px at 50% -10%, rgba(34,211,238,.07), transparent 70%), #0a0e14;
+  transition:border-color .2s ease, background .2s ease, transform .2s ease}
+.dropzone:hover,.dropzone.hot{border-color:rgba(34,211,238,.62); background:radial-gradient(560px 190px at 50% -10%, rgba(34,211,238,.13), transparent 70%), #0b1017; transform:translateY(-1px)}
+.dropzone .dz-icon{width:38px;height:38px;margin:0 auto 10px;border-radius:11px;display:grid;place-items:center;color:var(--accent);
+  background:linear-gradient(145deg,rgba(34,211,238,.18),rgba(34,211,238,.03)); border:1px solid rgba(34,211,238,.3); box-shadow:0 0 26px -8px rgba(34,211,238,.7)}
+.dropzone .dz-icon svg{width:18px;height:18px}
+.dz-title{font-size:13px; color:var(--ink-2)}
+.dz-sub{font-size:11.5px; color:var(--muted-2); margin-top:5px}
+.dz-sub a{color:var(--accent); text-decoration:none; border-bottom:1px dashed rgba(34,211,238,.45)}
+.dz-file{display:inline-flex; align-items:center; gap:8px; margin-top:11px; padding:4px 11px; border-radius:999px; font-size:11.5px;
+  color:var(--accent); background:var(--accent-soft); border:1px solid rgba(34,211,238,.28); font-family:var(--mono)}
+.import-actions{display:flex; gap:10px; margin-top:14px; flex-wrap:wrap}
+.import-summary{display:flex; gap:9px; flex-wrap:wrap; margin:16px 0 11px; font-size:12px; color:var(--ink-2)}
+.chip-ok{color:var(--ok); background:var(--ok-soft); border:1px solid rgba(52,211,153,.28); border-radius:999px; padding:2px 9px; font-size:11.5px}
+.chip-bad{color:var(--bad); background:var(--bad-soft); border:1px solid rgba(248,113,113,.28); border-radius:999px; padding:2px 9px; font-size:11.5px}
+.chip-mute{color:var(--muted); background:#0d1218; border:1px solid var(--line); border-radius:999px; padding:2px 9px; font-size:11.5px}
+.import-banner{display:flex; align-items:center; gap:12px; flex-wrap:wrap; margin-top:16px; padding:12px 14px; border-radius:12px;
+  border:1px solid rgba(52,211,153,.3); background:linear-gradient(180deg,rgba(52,211,153,.10),rgba(52,211,153,.02)); color:var(--ink-2); font-size:12.5px}
+.import-banner.err{border-color:rgba(248,113,113,.32); background:linear-gradient(180deg,rgba(248,113,113,.10),rgba(248,113,113,.02))}
+.import-banner .grow{flex:1}
+.sub-head{display:flex; align-items:center; gap:10px; margin:20px 0 10px; padding-top:16px; border-top:1px solid var(--line-soft)}
+.sub-head .panel-title{font-size:12.5px}
+.rowbad{background:rgba(248,113,113,.05)}
+.rowbad td{color:var(--ink-2)}
+.t-issue{color:var(--bad); font-size:11.5px}
+.t-ok{color:var(--ok); font-size:11.5px}
+.empty-box{padding:26px 12px; text-align:center; color:var(--muted-2); font-size:12.5px; border:1px dashed var(--line); border-radius:12px; background:#0a0e14}
+
+@media (max-width:640px){
+  .tabs{margin-left:0; order:3; width:100%; justify-content:center}
+  .topbar{flex-wrap:wrap}
+  .dropzone{padding:20px 14px}
+}
 </style>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='9' fill='%230b0e14'/%3E%3Cpath d='M16 7.5l7 4v9l-7 4-7-4v-9z' fill='none' stroke='%2322d3ee' stroke-width='1.8'/%3E%3Cpath d='M9 11.5l7 4 7-4' fill='none' stroke='%2322d3ee' stroke-width='1.8'/%3E%3C/svg%3E">
 </head>
@@ -447,6 +509,11 @@ a.src:hover{color:var(--accent); border-bottom-color:var(--accent)}
         <div class="brand-sub" style="font-size:9.5px">Sourcing Console</div>
       </div>
     </div>
+
+    <nav class="tabs" id="navTabs">
+      <button class="tab on" data-tab="work">比价工作台</button>
+      <button class="tab" data-tab="import">报价单导入</button>
+    </nav>
 
     <span class="pill" id="runBadge"><span class="dot"></span><span id="runBadgeTxt">空闲</span></span>
 
@@ -529,16 +596,34 @@ a.src:hover{color:var(--accent); border-bottom-color:var(--accent)}
         </div>
 
         <div class="wiz-pane hidden" data-pane="2">
-          <div class="review-list" id="reviewList"></div>
+          <div class="source-cards" id="sourceCards">
+            <div class="source-card on" data-src="MOCK">
+              <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 10h18"/><path d="M8 15h5"/></svg></div>
+              <div>
+                <div class="t">模拟数据（MOCK）</div>
+                <div class="d">内置 18 家供应商与确定性报价，断网也能完整演示</div>
+              </div>
+              <span class="radio"></span>
+            </div>
+            <div class="source-card" data-src="IMPORT">
+              <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"/><path d="m7 10 5 5 5-5"/><path d="M5 21h14"/></svg></div>
+              <div>
+                <div class="t">导入的报价单（IMPORT）</div>
+                <div class="d">用供应商真实报价单比价，价格来自报价单原文，可信度更高</div>
+              </div>
+              <span class="radio"></span>
+            </div>
+          </div>
+          <div class="hint" id="importSourceHint" style="margin-top:9px; display:none">
+            当前品类还没有导入的报价单？先到 <a href="#" id="gotoImport" style="color:var(--accent); text-decoration:none; border-bottom:1px dashed rgba(34,211,238,.45)">报价单导入</a> 上传一份，或切回 MOCK。
+          </div>
+          <div class="review-list" id="reviewList" style="margin-top:14px"></div>
           <div class="hint" style="margin-top:10px">下发后 Java 侧生成状态机任务，Python 侧按名单逐家取证；进度通过 SSE 实时回传。</div>
         </div>
 
         <div class="wiz-foot">
-          <label class="switch" title="mock 模式不访问外网">
-            <input type="checkbox" id="mock" checked/>
-            <span class="track"></span>
-            <span>mock 模式（不访问外网）</span>
-          </label>
+          <input type="checkbox" id="mock" checked hidden/>
+          <span class="hint" id="sourceHint" style="margin:0">数据源：模拟数据（可在上一步切换）</span>
           <div class="spacer"></div>
           <button class="btn btn-ghost" id="prevBtn">上一步</button>
           <button class="btn btn-primary" id="nextBtn">下一步</button>
@@ -553,6 +638,64 @@ a.src:hover{color:var(--accent); border-bottom-color:var(--accent)}
         <span class="eyebrow" style="margin:0">本次需求</span>
         <div id="summaryChips" style="display:flex; gap:8px 20px; flex-wrap:wrap; font-size:12px; color:var(--ink-2)"></div>
         <button class="btn btn-ghost" id="summaryNewBtn" style="margin-left:auto; padding:5px 12px; font-size:12px">修改需求</button>
+      </div>
+    </section>
+
+    <!-- import -->
+    <section class="panel hidden" id="importPanel">
+      <div class="panel-head">
+        <div class="panel-title"><span class="idx">04</span>报价单导入</div>
+        <div class="panel-sub">供应商报价单 → 入库 → 参与比价（CSV / XLSX）</div>
+      </div>
+      <div class="panel-body">
+        <div class="dropzone" id="dropzone">
+          <div class="dz-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M14 3v5h5"/><path d="M19 8v11a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h7l5 5z"/>
+              <path d="M9 13h6"/><path d="M9 17h4"/>
+            </svg>
+          </div>
+          <div class="dz-title">把报价单拖进来，或点击选择文件</div>
+          <div class="dz-sub">支持 .csv / .xlsx，单文件 ≤ 5MB · <a href="#" id="tplLink">下载模板（标注必填列）</a></div>
+          <div class="dz-file hidden" id="dzFile"></div>
+          <input type="file" id="fileInput" accept=".csv,.xlsx" hidden/>
+        </div>
+
+        <div class="import-actions">
+          <button class="btn btn-ghost" id="importPreviewBtn" disabled>预览校验</button>
+          <button class="btn btn-primary" id="importCommitBtn" disabled>确认导入</button>
+          <button class="btn btn-ghost hidden" id="importResetBtn">换个文件</button>
+          <div class="spacer" style="flex:1"></div>
+          <span class="hint" id="importTip" style="margin:0">先预览：逐行校验，成功/失败一目了然</span>
+        </div>
+
+        <div id="importPreviewBox" class="hidden">
+          <div class="import-summary" id="importSummary"></div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th style="width:52px">行号</th>
+                  <th style="width:64px">状态</th>
+                  <th>供应商</th>
+                  <th>品类 / 规格</th>
+                  <th style="width:96px">含税单价</th>
+                  <th style="width:70px">交期</th>
+                  <th>问题</th>
+                </tr>
+              </thead>
+              <tbody id="previewBody"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <div id="importResult" class="hidden"></div>
+
+        <div class="sub-head">
+          <div class="panel-title"><span class="idx">05</span>导入批次</div>
+          <div class="panel-sub">同一文件重复导入不会重复入库；整批可撤销</div>
+        </div>
+        <div id="batchBox" class="empty-box">还没有导入记录</div>
       </div>
     </section>
 
@@ -733,7 +876,13 @@ a.src:hover{color:var(--accent); border-bottom-color:var(--accent)}
     charts: { ring: null, bar: null, ready: false },
     wizardStep: 0,
     cancelArmed: false,
-    lastTask: null
+    lastTask: null,
+    quoteSource: 'MOCK',
+    tab: 'work',
+    importFile: null,
+    importPreview: null,
+    importBusy: false,
+    batches: []
   };
 
   /* ---------------- helpers ---------------- */
@@ -786,7 +935,8 @@ a.src:hover{color:var(--accent); border-bottom-color:var(--accent)}
   /* ---------------- api ---------------- */
   async function api(path, options) {
     options = options || {};
-    var headers = Object.assign({ 'Content-Type': 'application/json' }, options.headers || {});
+    var isForm = typeof FormData !== 'undefined' && options.body instanceof FormData;
+    var headers = Object.assign(isForm ? {} : { 'Content-Type': 'application/json' }, options.headers || {});
     if (state.token) headers.Authorization = 'Bearer ' + state.token;
     var resp = await fetch(path, Object.assign({}, options, { headers: headers }));
     if (resp.status === 204) return null;
@@ -1083,6 +1233,8 @@ a.src:hover{color:var(--accent); border-bottom-color:var(--accent)}
     app.classList.add('in');
     setTimeout(function () { login.classList.add('hidden'); login.classList.remove('out'); }, 380);
     buildStepperIfNeeded();
+    showTab('work');
+    loadBatches();
   }
   function logout(silent) {
     state.token = null;
@@ -1127,7 +1279,7 @@ a.src:hover{color:var(--accent); border-bottom-color:var(--accent)}
       ['数量', $('quantity').value + ' 件'],
       ['预算', Number($('budget').value).toLocaleString('zh-CN') + ' CNY'],
       ['交付地', $('city').value],
-      ['数据源', $('mock').checked ? 'mock 内置数据（不访问外网）' : '白名单内公开页面']
+      ['数据源', state.quoteSource === 'MOCK' ? 'mock 内置数据（不访问外网）' : '已导入的供应商报价单']
     ];
     $('reviewList').innerHTML = rows.map(function (r) {
       return '<div class="review-row"><span class="k">' + escapeHtml(r[0]) + '</span><span class="v">' + escapeHtml(r[1]) + '</span></div>';
@@ -1201,9 +1353,10 @@ a.src:hover{color:var(--accent); border-bottom-color:var(--accent)}
           deliveryCity: $('city').value.trim()
         })
       });
-      var mockMode = $('mock').checked;
+      var quoteSource = state.quoteSource;
+      var mockMode = quoteSource === 'MOCK';
       $('mockChip').style.display = mockMode ? '' : 'none';
-      var task = await api('/api/requirements/' + requirement.id + '/tasks?mockMode=' + mockMode, { method: 'POST' });
+      var task = await api('/api/requirements/' + requirement.id + '/tasks?mockMode=' + mockMode + '&quoteSource=' + quoteSource, { method: 'POST' });
       state.taskId = task.id;
       state.lastTask = task;
       beginRun(task.id);
@@ -1221,7 +1374,7 @@ a.src:hover{color:var(--accent); border-bottom-color:var(--accent)}
       ['数量', $('quantity').value + ' 件'],
       ['预算', Number($('budget').value).toLocaleString('zh-CN') + ' CNY'],
       ['交付地', $('city').value.trim()],
-      ['数据源', $('mock').checked ? 'mock 内置' : '白名单公开页']
+      ['数据源', state.quoteSource === 'MOCK' ? 'mock 内置' : '导入的报价单']
     ];
     return items.map(function (it) {
       return '<span><span style="color:var(--muted-2); margin-right:5px">' + escapeHtml(it[0]) + '</span>' + escapeHtml(it[1]) + '</span>';
@@ -1567,7 +1720,236 @@ a.src:hover{color:var(--accent); border-bottom-color:var(--accent)}
     if (state.wizardStep === 2) renderReview();
   });
 
+  /* ================= tabs ================= */
+  function showTab(name) {
+    state.tab = name;
+    Array.prototype.forEach.call(document.querySelectorAll('#navTabs .tab'), function (b) {
+      b.classList.toggle('on', b.getAttribute('data-tab') === name);
+    });
+    var isImport = name === 'import';
+    show('importPanel', isImport);
+    show('wizardPanel', !isImport && !state.taskId);
+    show('summaryPanel', !isImport && !!state.taskId);
+    show('progressPanel', !isImport && !!state.taskId);
+    show('resultPanel', !isImport && !!state.taskId && !$('resultBody').classList.contains('hidden'));
+    var panel = isImport ? $('importPanel') : ($('resultPanel').classList.contains('hidden') ? $('progressPanel') : $('resultPanel'));
+    if (panel) {
+      panel.classList.remove('fade');
+      void panel.offsetWidth;
+      panel.classList.add('fade');
+    }
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    if (isImport) loadBatches();
+  }
+  Array.prototype.forEach.call(document.querySelectorAll('#navTabs .tab'), function (b) {
+    b.addEventListener('click', function () { showTab(b.getAttribute('data-tab')); });
+  });
+  $('gotoImport').addEventListener('click', function (e) { e.preventDefault(); showTab('import'); });
+
+  /* ================= 数据源选择 ================= */
+  function setSource(kind) {
+    state.quoteSource = kind;
+    Array.prototype.forEach.call(document.querySelectorAll('#sourceCards .source-card'), function (c) {
+      c.classList.toggle('on', c.getAttribute('data-src') === kind);
+    });
+    $('mock').checked = kind === 'MOCK';
+    $('mockChip').style.display = kind === 'MOCK' ? '' : 'none';
+    $('sourceHint').textContent = kind === 'MOCK'
+      ? '数据源：模拟数据（可在上一步切换）'
+      : '数据源：导入的报价单（价格来自供应商报价单原文）';
+    var hint = $('importSourceHint');
+    if (kind === 'IMPORT') {
+      var has = state.batches.some(function (b) { return b.rowOk > 0; });
+      hint.style.display = has ? 'none' : '';
+    } else {
+      hint.style.display = 'none';
+    }
+    if (state.wizardStep === 2) renderReview();
+  }
+  Array.prototype.forEach.call(document.querySelectorAll('#sourceCards .source-card'), function (c) {
+    c.addEventListener('click', function () { setSource(c.getAttribute('data-src')); });
+  });
+
+  /* ================= 报价单导入 ================= */
+  var DZ = $('dropzone'), FILE_INPUT = $('fileInput');
+
+  function humanSize(n) {
+    if (n >= 1048576) return (n / 1048576).toFixed(1) + ' MB';
+    if (n >= 1024) return Math.round(n / 1024) + ' KB';
+    return n + ' B';
+  }
+  function pickFile() { FILE_INPUT.value = ''; FILE_INPUT.click(); }
+  DZ.addEventListener('click', function (e) { if (e.target.id !== 'tplLink') pickFile(); });
+  $('tplLink').addEventListener('click', function (e) {
+    e.preventDefault();
+    e.stopPropagation();
+    download('/api/quotes/template.csv', '报价单模板.csv');
+  });
+  FILE_INPUT.addEventListener('change', function () { if (FILE_INPUT.files[0]) acceptFile(FILE_INPUT.files[0]); });
+  ['dragenter', 'dragover'].forEach(function (ev) {
+    DZ.addEventListener(ev, function (e) { e.preventDefault(); DZ.classList.add('hot'); });
+  });
+  ['dragleave', 'drop'].forEach(function (ev) {
+    DZ.addEventListener(ev, function (e) { e.preventDefault(); DZ.classList.remove('hot'); });
+  });
+  DZ.addEventListener('drop', function (e) {
+    var f = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0];
+    if (f) acceptFile(f);
+  });
+
+  function acceptFile(file) {
+    var name = (file.name || '').toLowerCase();
+    if (!/\.(csv|xlsx)$/.test(name)) { toast('只支持 .csv / .xlsx 报价单', 'err'); return; }
+    if (file.size > 5 * 1024 * 1024) { toast('文件超过 5MB', 'err'); return; }
+    state.importFile = file;
+    state.importPreview = null;
+    var tag = $('dzFile');
+    tag.textContent = file.name + ' · ' + humanSize(file.size);
+    show(tag, true);
+    show('importPreviewBtn', true);
+    show('importResetBtn', true);
+    $('importPreviewBtn').disabled = false;
+    $('importCommitBtn').disabled = true;
+    show('importPreviewBox', false);
+    show('importResult', false);
+    $('importTip').textContent = '文件已就绪，先预览校验';
+  }
+  $('importResetBtn').addEventListener('click', function () {
+    state.importFile = null;
+    state.importPreview = null;
+    show($('dzFile'), false);
+    show('importPreviewBox', false);
+    show('importResult', false);
+    show('importPreviewBtn', false);
+    show('importResetBtn', false);
+    $('importCommitBtn').disabled = true;
+    $('importTip').textContent = '先预览：逐行校验，成功/失败一目了然';
+  });
+
+  $('importPreviewBtn').addEventListener('click', function () {
+    if (!state.importFile || state.importBusy) return;
+    var btn = $('importPreviewBtn');
+    state.importBusy = true;
+    setLoading(btn, true, '校验中…');
+    var fd = new FormData();
+    fd.append('file', state.importFile);
+    api('/api/quotes/import/preview', { method: 'POST', body: fd })
+      .then(function (data) {
+        state.importPreview = data;
+        renderPreview(data);
+        $('importCommitBtn').disabled = data.okCount === 0;
+        $('importTip').textContent = data.okCount > 0 ? '校验通过 ' + data.okCount + ' 行，可以入库' : '没有可入库的行';
+      })
+      .catch(function (ex) { toast('校验失败：' + (ex.message || ''), 'err'); })
+      .then(function () { state.importBusy = false; setLoading(btn, false); });
+  });
+
+  function cellValue(data, keys) {
+    for (var i = 0; i < keys.length; i++) {
+      var v = data[keys[i]];
+      if (v != null && String(v).trim() !== '') return String(v);
+    }
+    return '';
+  }
+  function renderPreview(data) {
+    show('importPreviewBox', true);
+    $('importSummary').innerHTML =
+      '<span class="chip-mute">' + escapeHtml(data.filename || '') + '</span>' +
+      '<span class="chip-mute">共 ' + data.total + ' 行</span>' +
+      '<span class="chip-ok">可入库 ' + data.okCount + '</span>' +
+      '<span class="chip-bad">有问题 ' + data.failedCount + '</span>';
+    var rows = (data.rows || []).map(function (r, i) {
+      var d = r.data || {};
+      var price = cellValue(d, ['含税单价', 'unitPrice']);
+      var lead = cellValue(d, ['交期(天)', '交期', 'leadTimeDays']);
+      return '<tr class="' + (r.ok ? '' : 'rowbad') + '">' +
+        '<td class="mono">#' + (r.rowNo != null ? r.rowNo : (i + 2)) + '</td>' +
+        '<td>' + (r.ok ? '<span class="t-ok">可入库</span>' : '<span class="t-issue">有问题</span>') + '</td>' +
+        '<td>' + escapeHtml(cellValue(d, ['供应商名称', 'supplierName'])) + '</td>' +
+        '<td>' + escapeHtml(cellValue(d, ['品类', 'category'])) + ' · ' + escapeHtml(cellValue(d, ['规格', 'spec'])) + '</td>' +
+        '<td class="price">' + (price ? '¥' + escapeHtml(price) : '—') + '</td>' +
+        '<td class="mono">' + (lead ? escapeHtml(lead) + ' 天' : '—') + '</td>' +
+        '<td>' + (r.ok ? '<span class="muted">—</span>' : '<span class="t-issue">' + escapeHtml((r.errors || []).join('；')) + '</span>') + '</td>' +
+        '</tr>';
+    }).join('');
+    $('previewBody').innerHTML = rows || '<tr><td colspan="7"><span class="muted">没有数据行</span></td></tr>';
+  }
+
+  $('importCommitBtn').addEventListener('click', function () {
+    if (!state.importFile || state.importBusy) return;
+    var btn = $('importCommitBtn');
+    state.importBusy = true;
+    setLoading(btn, true, '入库中…');
+    var fd = new FormData();
+    fd.append('file', state.importFile);
+    api('/api/quotes/import', { method: 'POST', body: fd })
+      .then(function (data) {
+        show('importResult', true);
+        $('importResult').innerHTML =
+          '<div class="import-banner">' +
+          '<span class="chip-ok">批次 #' + data.batchId + '</span>' +
+          '<span>导入 <b>' + data.imported + '</b> 条，重复跳过 ' + data.duplicated + ' 条，失败 ' + data.failed + ' 条</span>' +
+          '<span class="grow"></span>' +
+          '<button class="btn btn-ghost" id="revokeNowBtn" style="padding:5px 12px;font-size:12px">撤销这批</button>' +
+          '</div>';
+        $('revokeNowBtn').onclick = function () { revokeBatch(data.batchId); };
+        state.importPreview = null;
+        $('importCommitBtn').disabled = true;
+        show('importPreviewBtn', false);
+        $('importTip').textContent = '已入库，可切到比价工作台用「导入的报价单」比价';
+        loadBatches();
+      })
+      .catch(function (ex) { toast('导入失败：' + (ex.message || ''), 'err'); })
+      .then(function () { state.importBusy = false; setLoading(btn, false); });
+  });
+
+  function loadBatches() {
+    if (!state.token) return;
+    api('/api/quotes/import/batches').then(function (list) {
+      state.batches = list || [];
+      renderBatches();
+      if (state.quoteSource === 'IMPORT' && state.wizardStep === 2) setSource('IMPORT');
+    }).catch(function () { /* 静默：列表失败不影响主流程 */ });
+  }
+  function renderBatches() {
+    var box = $('batchBox');
+    if (!state.batches.length) {
+      box.className = 'empty-box';
+      box.innerHTML = '还没有导入记录 · 上传第一份报价单试试';
+      return;
+    }
+    box.className = 'table-wrap';
+    var rows = state.batches.map(function (b) {
+      return '<tr>' +
+        '<td class="mono">#' + b.id + '</td>' +
+        '<td>' + escapeHtml(b.filename || '') + '</td>' +
+        '<td class="mono">' + b.rowTotal + '</td>' +
+        '<td><span class="chip-ok">' + b.rowOk + '</span></td>' +
+        '<td class="mono">' + b.rowFailed + '</td>' +
+        '<td class="mono">' + escapeHtml(shortTime(b.createdAt)) + '</td>' +
+        '<td><button class="btn btn-ghost" data-batch="' + b.id + '" style="padding:3px 10px;font-size:11.5px">撤销</button></td>' +
+        '</tr>';
+    }).join('');
+    box.innerHTML = '<table><thead><tr><th style="width:60px">批次</th><th>文件</th><th style="width:70px">总行</th>' +
+      '<th style="width:70px">可入库</th><th style="width:70px">失败</th><th style="width:150px">导入时间</th><th style="width:80px"></th></tr></thead>' +
+      '<tbody>' + rows + '</tbody></table>';
+    Array.prototype.forEach.call(box.querySelectorAll('[data-batch]'), function (btn) {
+      btn.addEventListener('click', function () { revokeBatch(Number(btn.getAttribute('data-batch'))); });
+    });
+  }
+  function revokeBatch(id) {
+    if (!confirm('撤销批次 #' + id + ' 将删除该批次导入的全部报价，确定？')) return;
+    api('/api/quotes/import/batches/' + id, { method: 'DELETE' })
+      .then(function () {
+        toast('已撤销批次 #' + id, 'warn');
+        show('importResult', false);
+        loadBatches();
+      })
+      .catch(function (ex) { toast('撤销失败：' + (ex.message || ''), 'err'); });
+  }
+
   /* ---------------- boot ---------------- */
+  setSource('MOCK');
   renderStepper();
   renderWizard();
   chartsReady();

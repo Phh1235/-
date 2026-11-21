@@ -90,6 +90,13 @@
             <version>${springdoc.version}</version>
         </dependency>
 
+        <!-- 报价单导入：CSV 手写解析，XLSX 交给 POI -->
+        <dependency>
+            <groupId>org.apache.poi</groupId>
+            <artifactId>poi-ooxml</artifactId>
+            <version>5.2.5</version>
+        </dependency>
+
         <dependency>
             <groupId>org.projectlombok</groupId>
             <artifactId>lombok</artifactId>

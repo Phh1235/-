@@ -28,6 +28,24 @@ class RequirementPayload(BaseModel):
     description: str | None = None
 
 
+class LatestQuote(BaseModel):
+    """Java 下发的"供应商自己报的价"（报价单导入）。
+
+    有它就不要再抓页面、更不要让模型猜价格：这是唯一 100% 可核验的价格来源，
+    因此进 QuoteItem 时 verified=True、needsReview=False。
+    """
+
+    unitPrice: Decimal
+    currency: str | None = None
+    unit: str | None = None
+    moq: Decimal | None = None
+    leadTimeDays: int | None = None
+    taxIncluded: bool | None = None
+    quoteDate: date | None = None
+    validUntil: date | None = None
+    sourceRef: str | None = None
+
+
 class CandidateSupplier(BaseModel):
     id: int
     code: str | None = None
@@ -36,11 +54,13 @@ class CandidateSupplier(BaseModel):
     category: str | None = None
     rating: Decimal | None = None
     blacklisted: bool = False
+    latestQuote: LatestQuote | None = None
 
 
 class AgentSubmitRequest(BaseModel):
     taskId: int
     mockMode: bool = False
+    quoteSource: str | None = None
     callbackUrl: str | None = None
     requirement: RequirementPayload
     candidates: list[CandidateSupplier] = Field(default_factory=list)

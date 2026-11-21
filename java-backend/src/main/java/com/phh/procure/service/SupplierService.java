@@ -13,6 +13,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
+import java.math.BigDecimal;
+
 @Service
 @RequiredArgsConstructor
 public class SupplierService {
@@ -71,6 +73,48 @@ public class SupplierService {
 
     public Supplier findByCode(String code) {
         return supplierMapper.selectOne(Wrappers.<Supplier>lambdaQuery().eq(Supplier::getCode, code));
+    }
+
+    /**
+     * 报价单导入时按名称找供应商：找到就复用，找不到就建一条"待补充资质"的草稿供应商。
+     * <p>这就是"新公司没有供应商库也能用"的关键一步——采购员导入一张报价单，
+     * 供应商主数据就自动长出来了，而不是要求他先去手工录 10 家公司。</p>
+     */
+    @Transactional
+    public Supplier findOrCreateByName(String name, String code, String category) {
+        String normalized = name == null ? "" : name.trim();
+        if (normalized.isEmpty()) {
+            throw BizException.badRequest("供应商名称不能为空");
+        }
+        if (StringUtils.hasText(code)) {
+            Supplier byCode = findByCode(code.trim());
+            if (byCode != null) {
+                return byCode;
+            }
+        }
+        Supplier existing = supplierMapper.selectOne(Wrappers.<Supplier>lambdaQuery()
+                .eq(Supplier::getName, normalized)
+                .last("limit 1"));
+        if (existing != null) {
+            return existing;
+        }
+
+        Supplier supplier = new Supplier();
+        supplier.setCode(StringUtils.hasText(code) ? code.trim() : nextImportedCode());
+        supplier.setName(normalized);
+        supplier.setCategory(StringUtils.hasText(category) ? category.trim() : "未分类");
+        supplier.setWebsite("");
+        supplier.setRating(new BigDecimal("3.50"));
+        supplier.setBlacklisted(false);
+        supplier.setNote("由报价单导入自动创建，资质待补充");
+        supplierMapper.insert(supplier);
+        return supplier;
+    }
+
+    private String nextImportedCode() {
+        Long count = supplierMapper.selectCount(Wrappers.<Supplier>lambdaQuery()
+                .likeRight(Supplier::getCode, "SUP-IMP-"));
+        return String.format("SUP-IMP-%03d", (count == null ? 0 : count) + 1);
     }
 
     private void apply(Supplier supplier, SupplierRequest r) {

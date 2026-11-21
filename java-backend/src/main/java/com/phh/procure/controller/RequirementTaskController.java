@@ -25,7 +25,8 @@ public class RequirementTaskController {
     @PostMapping
     @ResponseStatus(HttpStatus.ACCEPTED)
     public ApiResponse<AgentTask> create(@PathVariable Long requirementId,
-                                         @RequestParam(required = false) Boolean mockMode) {
-        return ApiResponse.ok(taskService.create(requirementId, mockMode));
+                                         @RequestParam(required = false) Boolean mockMode,
+                                         @RequestParam(defaultValue = "MOCK") String quoteSource) {
+        return ApiResponse.ok(taskService.create(requirementId, mockMode, quoteSource));
     }
 }

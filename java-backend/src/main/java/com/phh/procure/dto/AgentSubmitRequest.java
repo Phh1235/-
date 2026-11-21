@@ -13,6 +13,8 @@ import java.util.List;
 public record AgentSubmitRequest(
         Long taskId,
         boolean mockMode,
+        /** MOCK / IMPORT / FETCH：报价从哪来，决定 Python 走模拟、用导入的报价单还是真去抓页面 */
+        String quoteSource,
         String callbackUrl,
         RequirementPayload requirement,
         List<CandidateSupplier> candidates
@@ -40,7 +42,26 @@ public record AgentSubmitRequest(
             String website,
             String category,
             BigDecimal rating,
-            boolean blacklisted
+            boolean blacklisted,
+            /** 该供应商在该品类下"最新且未过期"的一条导入报价；没有则为 null */
+            LatestQuote latestQuote
+    ) {
+    }
+
+    /**
+     * 导入的报价单行。Python 拿到它就不要再猜价格了——这是供应商自己报的，
+     * 比任何抓取/模型推断都可信，因此 verified=true。
+     */
+    public record LatestQuote(
+            BigDecimal unitPrice,
+            String currency,
+            String unit,
+            BigDecimal moq,
+            Integer leadTimeDays,
+            Boolean taxIncluded,
+            LocalDate quoteDate,
+            LocalDate validUntil,
+            String sourceRef
     ) {
     }
 }

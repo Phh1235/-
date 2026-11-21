@@ -25,6 +25,7 @@ from app.pipeline import (
     build_risks,
     extract_quote,
     parse_requirement,
+    quote_from_seed,
     score_quotes,
 )
 from app.schemas import (
@@ -138,7 +139,9 @@ class TaskManager:
 
     async def _run(self, record: TaskRecord, req: AgentSubmitRequest) -> None:
         record.status = "RUNNING"
-        mock_mode = req.mockMode or self._settings.mock_mode
+        # 以 Java 下发的为准：false 表示"这份报价来自导入的报价单/真实页面"，
+        # 不能被服务端默认值覆盖，否则导入链路会被误标成 MOCK。
+        mock_mode = self._settings.mock_mode if req.mockMode is None else req.mockMode
         self._llm.reset_task_budget()
         try:
             await self._stage(record, "PARSE", "解析采购需求")
@@ -157,7 +160,12 @@ class TaskManager:
             if not candidates:
                 raise RuntimeError("Java 未下发候选供应商名单")
 
-            await self._stage(record, "FETCH", f"抓取 {len(candidates)} 家供应商报价页")
+            source_label = (
+                "导入的报价单"
+                if any(c.latestQuote for c in candidates)
+                else ("模拟数据" if mock_mode else "公开页面")
+            )
+            await self._stage(record, "FETCH", f"按{source_label}获取 {len(candidates)} 家报价")
             quotes, fetch_risks = await self._collect(quote_ctx, candidates, mock_mode, record)
 
             await self._stage(record, "NORMALIZE", "清洗并归一化报价字段")
@@ -218,6 +226,7 @@ class TaskManager:
             report_md, summary_json, recommended, recommendation = build_report(
                 req.requirement, quote_ctx, scored, risks, mock_mode,
                 narrative=narrative, spec_attributes=spec_attrs, engine=engine,
+                source_label=source_label,
             )
             await self._stage(record, "REPORT", "生成比价报告")
 
@@ -312,6 +321,11 @@ class TaskManager:
                         needsReview=False,
                     )
                 )
+                continue
+
+            # 导入的报价单优先：供应商自己报的价，不需要再抓页面、更不允许模型推断。
+            if cand.latestQuote is not None:
+                quotes.append(quote_from_seed(cand, ctx))
                 continue
 
             url = (cand.website or f"https://example.com/suppliers/{cand.code or cand.id}").strip()

@@ -160,7 +160,7 @@ mvn spring-boot:run
 | GET | `/api/auth/me` | 当前用户 |
 | GET/POST | `/api/requirements` | 需求单分页/新建 |
 | GET/PUT/DELETE | `/api/requirements/{id}` | 详情/修改/删除（有任务时 409） |
-| POST | `/api/requirements/{id}/tasks` | 创建比价任务 → 202 |
+| POST | `/api/requirements/{id}/tasks` | 创建比价任务 → 202（参数 `mockMode`、`quoteSource=MOCK/IMPORT/FETCH`） |
 | GET | `/api/tasks` `?status=&page=&size=` | 任务列表（非管理员只看自己的） |
 | GET | `/api/tasks/{id}` | 任务详情（状态/阶段/进度/错误） |
 | POST | `/api/tasks/{id}/cancel` · `/retry` | 取消（终态 409）· 重试（仅 FAILED/CANCELED） |
@@ -170,6 +170,12 @@ mvn spring-boot:run
 | GET | `/api/tasks/{id}/result` | 报价 + 风险 + 推荐结论 |
 | GET | `/api/tasks/{id}/report.md` · `/export.csv` | 报告下载 / 表格导出（UTF-8 BOM） |
 | GET/POST/PUT/DELETE | `/api/suppliers` | 供应商主数据 |
+| GET | `/api/quotes/template.csv` | 下载报价单模板（表头 + 必填说明 + 示例行） |
+| POST | `/api/quotes/import/preview` | 上传报价单逐行校验，返回可入库/失败行与原因 |
+| POST | `/api/quotes/import` | 确认入库（幂等去重，生成批次） |
+| GET | `/api/quotes/import/batches` | 导入批次列表 |
+| DELETE | `/api/quotes/import/batches/{id}` | 整批撤销（删该批次报价） |
+| GET | `/api/quotes?category=` | 已导入报价（按品类） |
 | POST | `/internal/agent/callback` | Python 回调（HMAC 验签，非公网暴露） |
 | POST | `/v1/inspect`（Python 内网） | 单页真实取证：抓取 + 抽取 + 来源/时间（详见第十四节） |
 
@@ -333,3 +339,70 @@ curl -X POST http://127.0.0.1:8000/v1/inspect \
 - 曾经误提交过一个 Key 到公开仓库（当时笔误写进了模板），已从模板移除，且该 Key 已失效；
   如果你要复用同类 Key，请先去控制台作废并重新签发；
 - 生产环境应把 `/v1/inspect` 也放到内网，或在网关层再加一层鉴权与配额。
+
+---
+
+## 十五、供应商报价单导入（v1.3）
+
+### 1. 为什么加这个
+
+真实的小公司采购不是"爬全网报价"，而是：**采购员把需求发给几家熟悉的供应商 → 供应商回一份报价单 →
+采购员录进 Excel → 比价 → 选一家**。价格是谈出来的，不是爬出来的。
+
+所以本项目补上了这条最真实的链路：**导入供应商报价单 → 入库 → 直接用真实报价比价**。
+它同时解决冷启动：系统里没有供应商主数据时，导入报价单会按名称自动建"草稿供应商"。
+
+### 2. 模板（下载接口直接给）
+
+`GET /api/quotes/template.csv` 返回带 BOM 的 UTF-8 CSV，首行是 15 列表头，`#` 开头的说明行标注必填项，末尾两行示例：
+
+| 列 | 必填 | 说明 |
+| --- | --- | --- |
+| 供应商名称 | ✅ | 匹配不到自动建草稿供应商（`SUP-IMP-###`，资质待补充） |
+| 统一社会信用代码 | | 有就先按它匹配，避免同名不同公司 |
+| 品类 | ✅ | 与需求单品类一致才会进入候选 |
+| 规格 | ✅ | 如 `70g, 500张/包` |
+| 含税单价 | ✅ | 支持 `¥28.50`、`1,280.00`；0 或负数拒绝，上限 1000 万 |
+| 币种 / 单位 | | 默认 CNY / 件 |
+| 起订量 / 交期(天) | | 非负整数 |
+| 是否含税 | | 是/否，默认是 |
+| 有效期至 | | `2026-12-31`，过期报价不参与比价 |
+| 联系人 / 电话 | | 电话入库前脱敏为 `138****5678` |
+| 报价日期 | ✅ | 同一供应商同一品类取"最新且未过期"的一条 |
+| 备注 | | |
+
+XLSX 用 Apache POI 解析，与 CSV 走同一套校验。
+
+### 3. 流程
+
+```
+上传（拖拽/选择） → 预览校验（逐行 ok/失败 + 原因） → 确认入库 → 可整批撤销
+```
+
+关键设计（也写在 `QuoteImportService` 里）：
+
+- **幂等**：唯一键 `supplier_id + category + spec + quote_date`，同一份文件重复导入只会增加 `duplicated` 计数；
+- **可撤销**：每次导入落一个 `import_batch`，撤销即删除该批次全部报价；
+- **可信度**：`source_url = 文件名#行号`、`fetched_at = 报价日期`、`verified = true`、`confidence = 0.95`，
+  报告第三节会显示"供应商报价单导入"而不是"页面抓取"；
+- **安全**：只读解析、大小上限 5MB、只接受 csv/xlsx、逐行校验金额/日期/币种、电话脱敏。
+
+### 4. 用导入的报价比价
+
+创建任务时传 `quoteSource=IMPORT`：
+
+```bash
+curl -X POST "http://127.0.0.1:8080/api/requirements/1/tasks?mockMode=false&quoteSource=IMPORT" \
+  -H "Authorization: Bearer <token>"
+```
+
+Java 会按需求单品类取"最新且未过期"的导入报价，作为候选与 `latestQuote` 一并发给 Python；
+Python 直接用它构造 `QuoteItem`（不再抓页面、不让模型猜价格）。该品类没有导入报价时任务立即失败，
+提示"请先到「报价单导入」上传，或改用 MOCK 模式"——失败可观测，不会假装成功。
+
+### 5. 演示路径（30 秒）
+
+1. 打开 `/demo.html` → 登录 → 顶部切到「报价单导入」；
+2. 「下载模板」→ 填三行（或直接用 `logs/quotes-1121.csv` 这类样例）→ 拖进来 → 预览 → 确认导入；
+3. 切回「比价工作台」→ 新建比价 → 第 3 步选「导入的报价单（IMPORT）」→ 开始比价；
+4. 结果页每条报价的来源列会显示 `quotes-1121.csv#L2`，点击可核对。

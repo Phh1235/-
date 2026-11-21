@@ -260,6 +260,38 @@ def apply_risk_scores(scored: list[ScoredQuote], risks: list[RiskItem]) -> None:
         )
 
 
+# ---------------------------------------------------------------- 导入报价
+
+
+def quote_from_seed(cand: CandidateSupplier, ctx: dict) -> QuoteItem:
+    """把 Java 下发的"供应商报价单"直接转成 QuoteItem。
+
+    这是全链路唯一"价格 100% 有出处"的路径：金额、交期、起订量都来自报价单原文，
+    所以 verified=True、confidence=0.95；缺字段的才需要人工核实。
+    """
+    seed = cand.latestQuote
+    if seed is None:
+        raise ValueError("candidate has no latestQuote")
+    return QuoteItem(
+        supplierId=cand.id,
+        supplierName=cand.name,
+        unitPrice=seed.unitPrice,
+        currency=seed.currency or ctx.get("currency") or "CNY",
+        unit=seed.unit or ctx.get("unit") or "件",
+        moq=seed.moq,
+        leadTimeDays=seed.leadTimeDays,
+        taxIncluded=seed.taxIncluded,
+        sourceUrl=seed.sourceRef or "报价单导入",
+        fetchedAt=datetime.combine(seed.quoteDate, datetime.min.time())
+        if seed.quoteDate
+        else datetime.now(),
+        confidence=Decimal("0.95"),
+        verified=True,
+        needsReview=False,
+        rawSnippet="供应商报价单导入（金额、交期均来自报价单原文）",
+    )
+
+
 # ---------------------------------------------------------------- 风险
 
 
@@ -391,6 +423,7 @@ def build_report(
     narrative: str | None = None,
     spec_attributes: dict | None = None,
     engine: dict | None = None,
+    source_label: str | None = None,
 ) -> tuple[str, str, str, str]:
     """返回 (report_md, summary_json, recommended_supplier, recommendation)。"""
     ordered = sorted(scored, key=lambda s: s.total, reverse=True)
@@ -422,8 +455,9 @@ def build_report(
     lines.append(f"# 采购比价报告：{mask_sensitive(req.title)}")
     lines.append("")
     lines.append(f"- 生成时间：{now}")
-    lines.append(f"- 数据模式：{'MOCK（模拟数据）' if mock_mode else '真实抓取'}")
-    lines.append(f"- 候选供应商：{len(scored)} 家（按主数据名单取证）")
+    data_mode = source_label or ("MOCK（模拟数据）" if mock_mode else "公开网页抓取")
+    lines.append(f"- 数据模式：{data_mode}")
+    lines.append(f"- 候选供应商：{len(scored)} 家（{data_mode if source_label else '按主数据名单取证'}）")
     lines.append("")
     lines.append("## 一、需求摘要")
     lines.append("")
@@ -487,7 +521,7 @@ def build_report(
     lines.append("")
 
     summary = {
-        "task": {"title": req.title, "category": req.category, "quantity": str(req.quantity or "")},
+        "task": {"title": req.title, "category": req.category, "quantity": fmt_num(req.quantity)},
         "recommended": recommended,
         "quotes": [
             {
