@@ -97,7 +97,8 @@ body::after{
 }
 .btn:hover{border-color:#33405a; background:#1a2130}
 .btn:active{transform:translateY(1px)}
-.btn:disabled{opacity:.5; cursor:not-allowed; transform:none}
+.btn:disabled{opacity:.42; cursor:not-allowed; transform:none; filter:saturate(.55)}
+.btn-primary:disabled::after{display:none}
 .btn-primary{
   background:linear-gradient(180deg,#2ad7ef,#12a9c2); border-color:transparent; color:#04141a; font-weight:650;
   box-shadow:0 8px 26px -12px rgba(34,211,238,.9), inset 0 1px 0 rgba(255,255,255,.35);
@@ -180,7 +181,7 @@ main{max-width:1240px; margin:0 auto; padding:26px 24px 10px; display:flex; flex
 .review-list{display:grid; gap:8px; margin-top:4px}
 .review-row{display:flex; gap:10px; font-size:12.5px; padding:8px 11px; background:#0a0d12; border:1px solid var(--line-soft); border-radius:8px}
 .review-row .k{color:var(--muted-2); min-width:64px}
-.review-row .v{color:var(--ink-2)}
+.review-row .v{color:var(--ink); font-weight:500}
 
 /* ---------- stepper ---------- */
 .stepper{display:grid; grid-template-columns:repeat(7,minmax(0,1fr)); gap:0; margin:6px 0 4px}
@@ -1278,8 +1279,7 @@ a.src:hover{color:var(--accent); border-bottom-color:var(--accent)}
       ['规格', $('spec').value],
       ['数量', $('quantity').value + ' 件'],
       ['预算', Number($('budget').value).toLocaleString('zh-CN') + ' CNY'],
-      ['交付地', $('city').value],
-      ['数据源', state.quoteSource === 'MOCK' ? 'mock 内置数据（不访问外网）' : '已导入的供应商报价单']
+      ['交付地', $('city').value]
     ];
     $('reviewList').innerHTML = rows.map(function (r) {
       return '<div class="review-row"><span class="k">' + escapeHtml(r[0]) + '</span><span class="v">' + escapeHtml(r[1]) + '</span></div>';
