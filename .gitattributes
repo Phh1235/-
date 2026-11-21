@@ -1,0 +1,15 @@
+# Windows 批处理必须 CRLF，否则 cmd 解析会串行
+*.bat text eol=crlf
+*.cmd text eol=crlf
+
+# PowerShell 脚本保持 LF 即可；.ps1 需带 BOM 才能在 Windows PowerShell 5.1 正确解析中文
+*.ps1 text eol=lf
+*.psm1 text eol=lf
+
+# 其余文本统一 LF
+*.java text eol=lf
+*.py text eol=lf
+*.sql text eol=lf
+*.md text eol=lf
+*.yml text eol=lf
+*.json text eol=lf
