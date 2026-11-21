@@ -248,6 +248,8 @@ main{max-width:1240px; margin:0 auto; padding:26px 24px 10px; display:flex; flex
 .hero-name{font-size:27px; font-weight:660; letter-spacing:-.02em; margin:9px 0 6px; line-height:1.25}
 .hero-reason{color:var(--ink-2); font-size:13px; line-height:1.7; max-width:62ch}
 .hero-side{display:flex; gap:18px; align-items:center; flex-wrap:wrap}
+.engine-chip{align-self:flex-start; margin-top:4px; font-size:11px; letter-spacing:.02em; padding:4px 9px; border-radius:999px; border:1px solid rgba(34,211,238,.38); color:#7fe6f7; background:rgba(34,211,238,.08); white-space:nowrap}
+.engine-chip.off{color:var(--ink-3); border-color:var(--line); background:transparent}
 .conf{display:flex; align-items:center; gap:11px; padding:10px 14px; border:1px solid var(--line); border-radius:12px; background:rgba(5,7,10,.45)}
 .conf-ring{width:44px;height:44px;border-radius:50%; display:grid; place-items:center; background:conic-gradient(var(--ok) calc(var(--p,0)*1%), #1a202b 0)}
 .conf-ring i{width:34px;height:34px;border-radius:50%;background:#0b0e14;display:grid;place-items:center;font-style:normal;font-size:11px;font-family:var(--mono);color:var(--ok)}
@@ -619,6 +621,7 @@ a.src:hover{color:var(--accent); border-bottom-color:var(--accent)}
                 <div class="hero-reason" id="heroReason">—</div>
               </div>
               <div class="hero-side">
+                <div class="engine-chip off" id="engineChip" title="本次任务的大模型参与情况">规则引擎</div>
                 <div class="conf">
                   <div class="conf-ring" id="confRing" style="--p:0"><i id="confNum">0%</i></div>
                   <div class="conf-txt">平均置信度<b id="confLabel">数据待核实</b></div>
@@ -1427,6 +1430,21 @@ a.src:hover{color:var(--accent); border-bottom-color:var(--accent)}
 
     $('heroName').textContent = rec || '暂无推荐结论';
     $('heroReason').textContent = result.recommendation || '任务未产出推荐理由，请人工复核报价与风险项。';
+
+    var engine = null;
+    try { engine = (JSON.parse(result.summaryJson || '{}') || {}).engine || null; } catch (e) { engine = null; }
+    var chip = $('engineChip');
+    if (engine && engine.llmUsed) {
+      chip.classList.remove('off');
+      chip.textContent = 'AI · ' + (engine.llmModel || '大模型');
+      chip.title = '大模型参与：' + (engine.llmStages || '结论撰写') + '（本任务 ' + (engine.llmCalls || 0) + ' 次调用）';
+    } else {
+      chip.classList.add('off');
+      chip.textContent = '规则引擎';
+      chip.title = engine && engine.llmError
+        ? '大模型本次未参与（' + engine.llmError + '），已自动降级为确定性规则'
+        : '本次未使用大模型：规格解析、打分与报告全部由确定性规则完成';
+    }
 
     var avgConf = quotes.length
       ? quotes.reduce(function (s, q) { return s + (Number(q.confidence) || 0); }, 0) / quotes.length

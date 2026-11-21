@@ -139,10 +139,18 @@ class TaskManager:
     async def _run(self, record: TaskRecord, req: AgentSubmitRequest) -> None:
         record.status = "RUNNING"
         mock_mode = req.mockMode or self._settings.mock_mode
+        self._llm.reset_task_budget()
         try:
             await self._stage(record, "PARSE", "解析采购需求")
             quote_ctx = parse_requirement(req.requirement)
             spec_attrs: dict | None = None
+            # 预算 ≥2 次时拆成两次调用：PARSE 阶段做规格归一化，REPORT 阶段写结论。
+            # 免密钥网关只有 1 次配额，会走合并的单次调用。
+            split_calls = self._settings.llm_max_calls_per_task >= 2
+            if split_calls and self._llm.active:
+                spec_attrs = await self._llm.normalize_spec(
+                    req.requirement.category, req.requirement.title, req.requirement.spec or ""
+                )
 
             await self._stage(record, "DISCOVER", "确认候选供应商名单")
             candidates = req.candidates[:20]
@@ -164,8 +172,8 @@ class TaskManager:
             await self._stage(record, "SCORE", "按价格/交期/资质/风险加权打分")
             await self._stage(record, "RISK", f"识别 {len(risks)} 条风险项")
 
-            # REPORT 阶段才让大模型出场：它只复述事实、写一段结论，不参与任何算钱。
-            # 一次任务只花一次模型调用（规格归一化 + 结论合并在同一次），避免低配额网关被自己打满。
+            # REPORT 阶段才让大模型写结论：它只复述事实，不参与任何算钱。
+            # 预算只有 1 次时，规格归一化与结论合并成一次调用，避免低配额网关被自己打满。
             ordered = sorted(scored, key=lambda s: s.total, reverse=True)
             narrative = None
             if self._llm.active and ordered:
@@ -187,13 +195,16 @@ class TaskManager:
                         for s in ordered[:3]
                     ],
                 }
-                outcome = await self._llm.analyze_and_recommend(
-                    req.requirement.category, req.requirement.title,
-                    req.requirement.spec or "", facts,
-                )
-                if outcome:
-                    spec_attrs = outcome.get("specAttributes") or None
-                    narrative = outcome.get("recommendation")
+                if split_calls:
+                    narrative = await self._llm.write_recommendation(facts)
+                else:
+                    outcome = await self._llm.analyze_and_recommend(
+                        req.requirement.category, req.requirement.title,
+                        req.requirement.spec or "", facts,
+                    )
+                    if outcome:
+                        spec_attrs = outcome.get("specAttributes") or spec_attrs
+                        narrative = outcome.get("recommendation")
 
             engine = {
                 "llmUsed": self._llm.used,

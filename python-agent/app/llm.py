@@ -84,6 +84,18 @@ _RECO_PROMPT = """你是采购比价助手。下面有两块输入：
 """
 
 
+_RECO_ONLY_PROMPT = """你是采购比价助手。下面是系统已经算好的事实数据（JSON）。
+
+{facts}
+
+请用 2-3 句中文写"推荐结论"，要求：
+- 推荐对象必须等于事实里的 recommended，不得更换；
+- 只能引用事实里出现过的数字，禁止自己计算、换算或补充新数字；
+- 如果 highRisks 非空，必须提示签约前人工复核；
+- 只输出 JSON：{{"recommendation": "……"}}
+"""
+
+
 class LlmClient:
     def __init__(self, settings: Settings) -> None:
         self._settings = settings
@@ -92,6 +104,11 @@ class LlmClient:
         self.last_error: str | None = None
         self.calls = 0
         self.used = False
+        self._task_calls = 0
+
+    def reset_task_budget(self) -> None:
+        """每个任务开始时重置调用预算，避免一个任务把配额吃光。"""
+        self._task_calls = 0
 
     @property
     def model_label(self) -> str:
@@ -118,6 +135,10 @@ class LlmClient:
     async def _json_call(self, user_prompt: str) -> dict | None:
         if not self.active:
             return None
+        if self._task_calls >= self._settings.llm_max_calls_per_task:
+            logger.info("本任务模型调用预算已用尽（%d 次），后续降级规则引擎", self._task_calls)
+            return None
+        self._task_calls += 1
         self.calls += 1
         try:
             client = self._ensure_client()
@@ -167,12 +188,54 @@ class LlmClient:
         )
         return await self._json_call(prompt)
 
+    async def normalize_spec(self, category: str, title: str, spec: str) -> dict | None:
+        """把"70g, 500张/包"这类自由文本规格拆成结构化属性（单独一次调用）。
+
+        只做归一化，不参与打分；失败/超时/乱答一律返回 None，由规则兜底。
+        """
+        if not (spec or "").strip():
+            return None
+        prompt = _SPEC_PROMPT.format(
+            category=category or "未填写",
+            title=title or "未填写",
+            spec=wrap_untrusted(sanitize_untrusted(spec, max_chars=500).text),
+        )
+        data = await self._json_call(prompt)
+        if not data:
+            return None
+        attrs = data.get("attributes")
+        if not isinstance(attrs, dict):
+            return None
+        cleaned = {
+            str(k)[:20]: str(v)[:60]
+            for k, v in attrs.items()
+            if isinstance(v, (str, int, float)) and str(v).strip()
+        }
+        return cleaned or None
+
+    async def write_recommendation(self, facts: dict) -> str | None:
+        """让模型写"推荐结论"的自然语言版本（单独一次调用）。
+
+        模型只能复述 facts 里的数字；返回后仍要过 narrative_guard，对不上就整段丢弃。
+        """
+        prompt = _RECO_ONLY_PROMPT.format(
+            facts=wrap_untrusted(json.dumps(facts, ensure_ascii=False)[:2000])
+        )
+        data = await self._json_call(prompt)
+        if not data:
+            return None
+        text = data.get("recommendation")
+        if not isinstance(text, str):
+            return None
+        text = " ".join(text.split()).strip()
+        return text[:500] or None
+
     async def analyze_and_recommend(
         self, category: str, title: str, spec: str, facts: dict
     ) -> dict | None:
-        """一次调用同时产出「规格结构化」与「推荐结论」。
+        """一次调用同时产出「规格结构化」与「推荐结论」（低配额网关专用）。
 
-        为什么要合并：免费/低配额网关通常限制每分钟调用数，一次任务只花一次调用，
+        为什么要合并：免费网关通常限制每分钟调用数，一次任务只花一次调用，
         既能真的用上模型，又不会因为两次调用互相挤占配额而整条链路降级。
         返回值里的 recommendation 仍需过 narrative_guard，模型说了不算。
         """

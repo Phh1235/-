@@ -74,6 +74,7 @@ class Settings:
     llm_timeout: float
     llm_allow_keyless: bool
     llm_cooldown: float
+    llm_max_calls_per_task: int
 
     @property
     def llm_active(self) -> bool:
@@ -121,4 +122,7 @@ def get_settings() -> Settings:
         llm_timeout=_float("LLM_TIMEOUT_SECONDS", 40.0),
         llm_allow_keyless=_bool("LLM_ALLOW_KEYLESS", True),
         llm_cooldown=_float("LLM_COOLDOWN_SECONDS", 300.0),
+        # 有 key 的付费/自建端点默认允许 3 次/任务（解析、抽取、结论各一次）；
+        # 免密钥网关只有 1 次/45 秒，请在 .env 里把它调成 1。
+        llm_max_calls_per_task=_int("LLM_MAX_CALLS_PER_TASK", 1),
     )
