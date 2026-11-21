@@ -102,6 +102,17 @@ procure-agent/
 .\start.ps1 -SkipBuild
 ```
 
+> **提示：如果 PowerShell 报 `无法加载文件 ...start.ps1，未对文件进行数字签名` / `UnauthorizedAccess`**，
+> 是系统执行策略（ExecutionPolicy）拦截了脚本，与项目本身无关。三种解法任选其一：
+>
+> ```powershell
+> .\start.bat                                                     # 1) 最省事，脚本内已带 -ExecutionPolicy Bypass
+> powershell -ExecutionPolicy Bypass -File .\start.ps1            # 2) 单次绕过（不修改系统设置）
+> Set-ExecutionPolicy -Scope CurrentUser RemoteSigned             # 3) 永久放开当前用户（推荐，改完需重开终端）
+> ```
+>
+> 若文件是从压缩包/网盘拷来的，再补一条 `Unblock-File .\start.ps1`（去掉"来自 Internet"标记）。
+
 打开 <http://localhost:8080/demo.html>，账号 `demo / demo123`，默认勾选 MOCK 模式。
 API 文档：<http://localhost:8080/swagger-ui.html>。
 
