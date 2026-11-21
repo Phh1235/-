@@ -1,4 +1,4 @@
-# 采购比价与供应商尽调 Agent —— 一键启动（Windows PowerShell）
+﻿# 采购比价与供应商尽调 Agent —— 一键启动（Windows PowerShell）
 # 用法：
 #   .\start.ps1            构建并启动 Java（有 Python 就一起拉起），打开演示页
 #   .\start.ps1 -SkipBuild 跳过构建，直接用已有 jar
